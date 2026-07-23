@@ -19,22 +19,18 @@ Sau khi bật GitHub Pages, mở: `https://<username>.github.io/terrarium/`
 
 ## Phát triển
 
+Game là vanilla JS thuần, không cần build. Chạy dev server:
+
 ```bash
 npm install
 npm run dev
 ```
 
-Mở `http://localhost:5173/terrarium/`
-
-```bash
-npm run build
-npm run preview
-```
+Mở `http://localhost:5173/`
 
 ## Deploy GitHub Pages
 
-1. Vào **Settings → Pages → Build and deployment → GitHub Actions**
-2. Push lên nhánh `main` — workflow tự build & deploy
+Repo được phục vụ trực tiếp từ nhánh `main` (Settings → Pages → Deploy from a branch → `main` / root). Chỉ cần push lên `main` là bản mới tự lên.
 
 ## Cách mở nhánh
 
