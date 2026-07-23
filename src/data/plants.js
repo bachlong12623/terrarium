@@ -1,6 +1,7 @@
 export const SUCCULENT = {
   id: 'succulent',
   name: 'Sen đá',
+  icon: '🪴',
   description: 'Chịu khô, thích sáng. Cách chăm quyết định hình dáng cuối.',
   branches: [
     {
@@ -27,8 +28,36 @@ export const SUCCULENT = {
   ],
 };
 
+export const FERN = {
+  id: 'fern',
+  name: 'Dương xỉ',
+  icon: '🍃',
+  description: 'Ưa ẩm, lá mềm. Nước và ánh sáng định hình tán lá.',
+  branches: [
+    {
+      id: 'canopy',
+      label: 'Rừng',
+      hint: 'Ẩm cao + bón phân — tán rộng',
+      score: (care) => care.humid * 1.3 + care.fertilizeCount * 22 + care.mistCount * 8,
+    },
+    {
+      id: 'cascade',
+      label: 'Thác',
+      hint: 'Phun sương + xoay bình — lá rủ',
+      score: (care) => care.mistCount * 18 + care.rotateCount * 14 + care.humid * 0.6,
+    },
+    {
+      id: 'column',
+      label: 'Cột',
+      hint: 'Sáng vừa, ít tưới — vươn cao',
+      score: (care) => care.radiant * 1.2 + (100 - care.humid) * 0.7,
+    },
+  ],
+};
+
 export const PLANTS = {
   succulent: SUCCULENT,
+  fern: FERN,
 };
 
 export function getPlantDef(id) {

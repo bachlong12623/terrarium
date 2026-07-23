@@ -3,6 +3,7 @@ import { SaveManager } from './SaveManager.js';
 import { PixelRenderer, getPlantAt } from '../render/PixelRenderer.js';
 import { GameUI } from '../ui/GameUI.js';
 import { BRANCH_LABELS, STAGE_NAMES } from './constants.js';
+import { getPlantDef } from '../data/plants.js';
 
 export class Game {
   constructor(canvas, uiRoot) {
@@ -10,16 +11,16 @@ export class Game {
     this.renderer = new PixelRenderer(canvas);
     this.ui = new GameUI(uiRoot, this);
     this.terrarium = new Terrarium();
-    this.toast = null;
-    this.toastTimer = 0;
     this.lastTime = 0;
     this.running = false;
     this.pendingFlags = {};
     this.autoSaveTimer = 0;
+    this.uiTickTimer = 0;
     this.selectedPlant = null;
 
     this.load();
-    if (this.terrarium.plants.length === 0) {
+    if (this.terrarium.plants.length === 0 && this.terrarium.seeds > 0) {
+      this.terrarium.seeds += 1;
       this.terrarium.plantSeed('succulent');
     }
 
@@ -27,7 +28,6 @@ export class Game {
     window.addEventListener('resize', () => this.renderer.resize());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.save();
-      else this.applyOfflineProgress();
     });
   }
 
@@ -42,7 +42,7 @@ export class Game {
   applyOfflineProgress(savedAt) {
     if (!savedAt) return;
     const elapsed = Math.min(12 * 3600, (Date.now() - savedAt) / 1000);
-    if (elapsed < 5) return;
+    if (elapsed < 30) return;
 
     let remaining = elapsed * 0.35;
     const step = 1;
@@ -50,6 +50,10 @@ export class Game {
       this.terrarium.update(step, {});
       remaining -= step;
     }
+
+    const mins = Math.round(elapsed / 60);
+    const label = mins >= 60 ? `${Math.floor(mins / 60)}g ${mins % 60}p` : `${mins} phút`;
+    this.ui.showToast(`⏳ Bạn đã vắng ${label} — cây vẫn lớn!`, 3500);
   }
 
   save() {
@@ -78,7 +82,9 @@ export class Game {
   reset() {
     SaveManager.clear();
     this.terrarium = new Terrarium();
+    this.terrarium.seeds += 1;
     this.terrarium.plantSeed('succulent');
+    this.selectedPlant = null;
     this.ui.hidePanel();
     this.ui.showToast('Đã bắt đầu lại');
   }
@@ -93,6 +99,8 @@ export class Game {
       if (plant) {
         this.selectedPlant = plant;
         this.ui.showPlantDetail(plant);
+      } else {
+        this.selectedPlant = null;
       }
     };
 
@@ -103,52 +111,55 @@ export class Game {
     }, { passive: false });
   }
 
-  doWater() {
-    const flags = this.terrarium.water();
-    if (flags) {
-      this.pendingFlags = { ...this.pendingFlags, ...flags };
-      this.ui.showToast('Đã tưới nước 💧');
+  applyAction(name, flags, toastMsg) {
+    if (!flags) {
+      this.ui.showToast('Chờ chút rồi thử lại...', 1200);
+      return;
     }
+    this.pendingFlags = { ...this.pendingFlags, ...flags };
+    if (flags.cooldown) this.ui.startCooldown(name, flags.cooldown);
+    this.ui.showToast(toastMsg, 1500);
+  }
+
+  doWater() {
+    this.applyAction('water', this.terrarium.water(), 'Đã tưới nước 💧');
   }
 
   doMist() {
-    const flags = this.terrarium.mist();
-    if (flags) {
-      this.pendingFlags = { ...this.pendingFlags, ...flags };
-      this.ui.showToast('Đã phun sương 🌫️');
-    }
+    this.applyAction('mist', this.terrarium.mist(), 'Đã phun sương 🌫️');
   }
 
   doRotate() {
-    const flags = this.terrarium.rotate();
-    if (flags) {
-      this.pendingFlags = { ...this.pendingFlags, ...flags };
-      this.ui.showToast('Đã xoay bình 🔄');
-    }
+    this.applyAction('rotate', this.terrarium.rotate(), 'Đã xoay bình — thêm ánh sáng 🔄');
   }
 
   doFertilize() {
-    const flags = this.terrarium.fertilize();
-    if (flags) {
-      this.pendingFlags = { ...this.pendingFlags, ...flags };
-      this.ui.showToast('Đã bón phân 🌿');
-    }
+    this.applyAction('fertilize', this.terrarium.fertilize(), 'Đã bón phân — cây lớn nhanh hơn 🌿');
   }
 
   doPrune() {
-    const flags = this.terrarium.prune();
-    if (flags) {
-      this.pendingFlags = { ...this.pendingFlags, ...flags };
-      this.ui.showToast('Đã cắt tỉa ✂️');
+    this.applyAction('prune', this.terrarium.prune(), 'Đã cắt tỉa ✂️');
+  }
+
+  plantSpecies(speciesId) {
+    const result = this.terrarium.plantSeed(speciesId);
+    if (result.ok) {
+      const def = getPlantDef(speciesId);
+      this.ui.showToast(`Đã trồng ${def.name} ${def.icon}`);
+      this.save();
+    } else if (result.reason === 'noseed') {
+      this.ui.showToast('Hết hạt giống — thu hoạch cây trưởng thành');
+    } else {
+      this.ui.showToast('Bình đã đầy');
     }
   }
 
-  doPlant() {
-    if (this.terrarium.plantSeed('succulent')) {
-      this.ui.showToast('Đã trồng sen đá mới 🌱');
+  doHarvest(plant) {
+    if (this.terrarium.harvest(plant)) {
+      const def = getPlantDef(plant.speciesId);
+      this.ui.showToast(`🌾 Thu hoạch ${def.name} — +2 hạt giống!`, 3000);
+      if (this.selectedPlant === plant) this.selectedPlant = null;
       this.save();
-    } else {
-      this.ui.showToast('Tối đa 3 cây trong bình');
     }
   }
 
@@ -171,18 +182,9 @@ export class Game {
       if (plant.lastToast) {
         const t = plant.lastToast;
         plant.lastToast = null;
-        if (t.type === 'branch') {
-          this.showGameToast(`Nhánh: ${BRANCH_LABELS[t.branch]}`);
-        } else {
-          this.showGameToast(`Giai đoạn: ${STAGE_NAMES[t.stage]}`);
-        }
+        this.announcePlantEvent(plant, t);
         this.save();
       }
-    }
-
-    if (this.toastTimer > 0) {
-      this.toastTimer -= dt;
-      if (this.toastTimer <= 0) this.toast = null;
     }
 
     this.autoSaveTimer += dt;
@@ -191,21 +193,29 @@ export class Game {
       this.save();
     }
 
-    const plant = this.terrarium.plants[0];
+    this.uiTickTimer += dt;
+    if (this.uiTickTimer >= 0.4) {
+      this.uiTickTimer = 0;
+      this.ui.updatePlantDetail();
+    }
+
     this.renderer.render(this.terrarium, {
-      toast: this.toast,
-      showBranchPreview: plant?.stage === 6,
+      selectedPlant: this.selectedPlant,
     });
 
     requestAnimationFrame((t) => this.loop(t));
   }
 
-  showGameToast(payload) {
-    this.toast = payload;
-    this.toastTimer = 2.5;
-    const text = payload.branch
-      ? `Nhánh: ${BRANCH_LABELS[payload.branch]}`
-      : `Giai đoạn: ${STAGE_NAMES[payload.stage]}`;
-    this.ui.showToast(text);
+  announcePlantEvent(plant, event) {
+    const def = getPlantDef(plant.speciesId);
+    if (event.type === 'branch') {
+      this.ui.showToast(`✨ ${def.name} — Nhánh: ${BRANCH_LABELS[event.branch]}!`, 3500);
+    } else if (event.type === 'stage') {
+      this.ui.showToast(`${def.icon} ${def.name} → ${STAGE_NAMES[event.stage]}`, 2500);
+    } else if (event.type === 'wither') {
+      this.ui.showToast(`⚠️ ${def.name} đang héo — kiểm tra độ ẩm!`, 3000);
+    } else if (event.type === 'recover') {
+      this.ui.showToast(`💚 ${def.name} đã hồi phục!`, 2500);
+    }
   }
 }

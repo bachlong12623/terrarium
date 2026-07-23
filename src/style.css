@@ -108,6 +108,36 @@ body {
   background: #2d6a5a;
 }
 
+.action-btn:disabled,
+.action-btn.cooling {
+  opacity: 0.45;
+  cursor: default;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn.cooling::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: #48cae4;
+  animation: cooldown var(--cd, 1s) linear forwards;
+  transform-origin: left;
+}
+
+@keyframes cooldown {
+  from {
+    transform: scaleX(1);
+  }
+
+  to {
+    transform: scaleX(0);
+  }
+}
+
 .panel {
   pointer-events: auto;
   position: absolute;
@@ -212,6 +242,93 @@ body {
 
 .branch-locked strong {
   color: #90e0ef;
+}
+
+.status-bad {
+  color: #f4a261;
+  font-size: 11px;
+  padding: 6px 8px;
+  background: rgba(244, 162, 97, 0.1);
+  border: 1px solid rgba(244, 162, 97, 0.4);
+  border-radius: 4px;
+  margin: 6px 0;
+}
+
+.species-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.species-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px;
+  background: #1a2332;
+  border: 2px solid #2d6a5a;
+  border-radius: 8px;
+  color: #caf0f8;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.1s;
+}
+
+.species-card:hover {
+  border-color: #52b788;
+  transform: translateY(-1px);
+}
+
+.species-card:active {
+  transform: translateY(1px);
+}
+
+.species-icon {
+  font-size: 22px;
+}
+
+.species-name {
+  font-size: 13px;
+  color: #90e0ef;
+}
+
+.species-card small {
+  font-size: 10px;
+  color: #95d5b2;
+  line-height: 1.4;
+}
+
+.species-card em {
+  font-size: 10px;
+  font-style: normal;
+  color: #7eb8c9;
+}
+
+.dex-species h3 {
+  font-size: 13px;
+  color: #90e0ef;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.dex-species h3 small {
+  font-size: 10px;
+  color: #7eb8c9;
+}
+
+.dex-summary {
+  font-size: 10px;
+  color: #95d5b2;
+  margin-bottom: 8px;
+}
+
+.dex-divider {
+  border: none;
+  border-top: 2px dashed #2d3e50;
+  margin: 14px 0;
 }
 
 .dex-label {

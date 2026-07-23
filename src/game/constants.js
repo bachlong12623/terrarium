@@ -49,7 +49,15 @@ export const BRANCH_LABELS = {
   rosette: 'Đồng minh',
   desert: 'Sa mạc',
   garden: 'Vườn',
+  canopy: 'Rừng',
+  cascade: 'Thác',
+  column: 'Cột',
 };
+
+export const START_SEEDS = 3;
+export const HARVEST_SEEDS = 2;
+export const MAX_PLANTS = 4;
+export const PLANT_SLOTS = [0.3, 0.45, 0.6, 0.75];
 
 export const STAGE_DURATIONS = {
   1: 20,

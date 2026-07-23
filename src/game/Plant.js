@@ -65,6 +65,8 @@ export class Plant {
     this.variant = Math.floor(Math.random() * 3);
     this.plantedAt = Date.now();
     this.lastToast = null;
+    this.stress = 0;
+    this.withered = false;
   }
 
   get stageDuration() {
@@ -80,9 +82,16 @@ export class Plant {
     return this.stage >= 8;
   }
 
+  get isHarvestable() {
+    return this.stage >= 8;
+  }
+
   update(dt, env, actionFlags) {
+    this.updateStress(dt, env);
+
     if (this.stage >= 8) {
       this.updateSparkles(dt);
+      if (this.stageUpAnim > 0) this.stageUpAnim -= dt;
       return;
     }
 
@@ -104,7 +113,27 @@ export class Plant {
     this.updateSparkles(dt);
   }
 
+  updateStress(dt, env) {
+    const harsh = env.moisture < 15 || env.moisture > 95;
+    if (harsh) {
+      this.stress = Math.min(20, this.stress + dt);
+    } else {
+      this.stress = Math.max(0, this.stress - dt * 2);
+    }
+
+    if (!this.withered && this.stress >= 8) {
+      this.withered = true;
+      this.lastToast = { type: 'wither' };
+    } else if (this.withered && this.stress <= 1) {
+      this.withered = false;
+      this.lastToast = { type: 'recover' };
+      this.spawnSparkles(8);
+    }
+  }
+
   getGrowthRate(env) {
+    if (this.withered) return 0;
+
     let rate = 1;
     if (env.moisture < 15 || env.moisture > 95) rate *= 0.35;
     else if (env.moisture >= 40 && env.moisture <= 75) rate *= 1.15;
@@ -160,6 +189,8 @@ export class Plant {
       care: this.care.snapshot(),
       variant: this.variant,
       plantedAt: this.plantedAt,
+      stress: this.stress,
+      withered: this.withered,
     };
   }
 
@@ -171,6 +202,8 @@ export class Plant {
     plant.care = CareTracker.fromJSON(data.care);
     plant.variant = data.variant ?? 0;
     plant.plantedAt = data.plantedAt ?? Date.now();
+    plant.stress = data.stress ?? 0;
+    plant.withered = data.withered ?? false;
     return plant;
   }
 }
