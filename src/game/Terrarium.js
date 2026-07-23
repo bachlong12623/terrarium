@@ -1,4 +1,5 @@
 import { Plant } from './Plant.js';
+import { START_SEEDS, HARVEST_SEEDS, MAX_PLANTS, PLANT_SLOTS } from './constants.js';
 
 const DAY_LENGTH = 120;
 
@@ -15,6 +16,8 @@ export class Terrarium {
     this.discoveredBranches = new Set();
     this.discoveredStages = new Set();
     this.totalPlayTime = 0;
+    this.seeds = START_SEEDS;
+    this.harvestCount = 0;
   }
 
   get isDay() {
@@ -37,13 +40,50 @@ export class Terrarium {
     };
   }
 
+  findFreeSlot() {
+    for (const slot of PLANT_SLOTS) {
+      const taken = this.plants.some((p) => Math.abs(p.x - slot) < 0.06);
+      if (!taken) return slot;
+    }
+    return null;
+  }
+
   plantSeed(speciesId = 'succulent') {
-    if (this.plants.length >= 3) return false;
-    const x = 0.35 + Math.random() * 0.3;
-    const plant = new Plant(speciesId, x, 0.72);
+    if (this.plants.length >= MAX_PLANTS) return { ok: false, reason: 'full' };
+    if (this.seeds <= 0) return { ok: false, reason: 'noseed' };
+
+    const slot = this.findFreeSlot();
+    if (slot === null) return { ok: false, reason: 'full' };
+
+    this.seeds -= 1;
+    const plant = new Plant(speciesId, slot, 0.72);
     this.plants.push(plant);
     this.discoveredStages.add(`${speciesId}-1`);
+    return { ok: true, plant };
+  }
+
+  harvest(plant) {
+    const idx = this.plants.indexOf(plant);
+    if (idx === -1 || !plant.isHarvestable) return false;
+
+    this.plants.splice(idx, 1);
+    this.seeds += HARVEST_SEEDS;
+    this.harvestCount += 1;
+    this.spawnHarvestBurst(plant.x, plant.y);
     return true;
+  }
+
+  spawnHarvestBurst(x, y) {
+    for (let i = 0; i < 14; i += 1) {
+      this.particles.push({
+        kind: 'seedfly',
+        x: x + (Math.random() - 0.5) * 0.05,
+        y: y - 0.05,
+        vy: -0.08 - Math.random() * 0.12,
+        vx: (Math.random() - 0.5) * 0.1,
+        life: 0.8 + Math.random() * 0.6,
+      });
+    }
   }
 
   canAction(id, cooldown = 1.5) {
@@ -62,7 +102,7 @@ export class Terrarium {
     this.moisture = Math.min(100, this.moisture + 18);
     this.lastAction = { type: 'water', t: 0.4 };
     this.spawnRipple();
-    return { watered: true, waterBoost: 1 };
+    return { watered: true, waterBoost: 1, cooldown: 1.2 };
   }
 
   mist() {
@@ -71,7 +111,7 @@ export class Terrarium {
     this.moisture = Math.min(100, this.moisture + 10);
     this.lastAction = { type: 'mist', t: 0.6 };
     this.spawnMist();
-    return { misted: true, mistBoost: 1 };
+    return { misted: true, mistBoost: 1, cooldown: 2 };
   }
 
   rotate() {
@@ -79,7 +119,7 @@ export class Terrarium {
     this.markAction('rotate');
     this.rotation = (this.rotation + 15) % 100;
     this.lastAction = { type: 'rotate', t: 0.3 };
-    return { rotated: true, rotateBoost: 1 };
+    return { rotated: true, rotateBoost: 1, cooldown: 0.8 };
   }
 
   fertilize() {
@@ -89,14 +129,14 @@ export class Terrarium {
     for (const plant of this.plants) {
       plant.stageProgress += 8;
     }
-    return { fertilized: true };
+    return { fertilized: true, cooldown: 3 };
   }
 
   prune() {
     if (!this.canAction('prune', 2.5)) return false;
     this.markAction('prune');
     this.lastAction = { type: 'prune', t: 0.4 };
-    return { pruned: true };
+    return { pruned: true, cooldown: 2.5 };
   }
 
   spawnRipple() {
@@ -106,6 +146,7 @@ export class Terrarium {
         x: 0.45 + Math.random() * 0.1,
         y: 0.3 + Math.random() * 0.1,
         vy: 0.15 + Math.random() * 0.1,
+        vx: 0,
         life: 0.5 + Math.random() * 0.3,
       });
     }
@@ -118,6 +159,7 @@ export class Terrarium {
         x: 0.3 + Math.random() * 0.4,
         y: 0.5 + Math.random() * 0.2,
         vy: -0.02 - Math.random() * 0.03,
+        vx: 0,
         life: 0.8 + Math.random() * 0.5,
       });
     }
@@ -127,8 +169,20 @@ export class Terrarium {
     this.totalPlayTime += dt;
     this.time = (this.time + dt / DAY_LENGTH) % 1;
 
-    this.moisture = Math.max(8, this.moisture - dt * 1.8);
+    this.moisture = Math.max(8, this.moisture - dt * 1.1);
     this.rotation = Math.max(0, this.rotation - dt * 2);
+
+    if (!this.isDay && Math.random() < dt * 0.6 && this.particles.length < 40) {
+      this.particles.push({
+        kind: 'firefly',
+        x: 0.25 + Math.random() * 0.5,
+        y: 0.25 + Math.random() * 0.35,
+        vy: (Math.random() - 0.5) * 0.02,
+        vx: (Math.random() - 0.5) * 0.03,
+        life: 2.5 + Math.random() * 2,
+        maxLife: 4,
+      });
+    }
 
     if (this.lastAction) {
       this.lastAction.t -= dt;
@@ -155,7 +209,7 @@ export class Terrarium {
     }
 
     this.particles = this.particles
-      .map((p) => ({ ...p, y: p.y + p.vy * dt, life: p.life - dt }))
+      .map((p) => ({ ...p, x: p.x + (p.vx ?? 0) * dt, y: p.y + p.vy * dt, life: p.life - dt }))
       .filter((p) => p.life > 0);
   }
 
@@ -169,6 +223,8 @@ export class Terrarium {
       discoveredBranches: [...this.discoveredBranches],
       discoveredStages: [...this.discoveredStages],
       totalPlayTime: this.totalPlayTime,
+      seeds: this.seeds,
+      harvestCount: this.harvestCount,
     };
   }
 
@@ -180,6 +236,8 @@ export class Terrarium {
     t.time = data.time ?? 0.25;
     t.rotation = data.rotation ?? 0;
     t.totalPlayTime = data.totalPlayTime ?? 0;
+    t.seeds = data.seeds ?? START_SEEDS;
+    t.harvestCount = data.harvestCount ?? 0;
     t.plants = (data.plants ?? []).map((p) => Plant.fromJSON(p));
     t.discoveredBranches = new Set(data.discoveredBranches ?? []);
     t.discoveredStages = new Set(data.discoveredStages ?? []);

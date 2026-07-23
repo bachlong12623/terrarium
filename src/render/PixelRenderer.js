@@ -1,15 +1,19 @@
 import { COLORS, GAME_W, GAME_H, STAGE_NAMES, BRANCH_LABELS } from '../game/constants.js';
-import { getBranchScores, getPlantDef } from '../data/plants.js';
+import { getBranchScores } from '../data/plants.js';
+
+const JAR = { x: 68, y: 26, w: 248, h: 154 };
+const SOIL_H = 28;
 
 function px(ctx, x, y, w, h, color) {
   ctx.fillStyle = color;
   ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
 }
 
-function drawSeed(ctx, x, y, stage) {
-  const s = stage <= 1 ? 1 : 1.2;
-  px(ctx, x - 2 * s, y - 2 * s, 4 * s, 4 * s, COLORS.soilDark);
-  px(ctx, x - 1 * s, y - 1 * s, 2 * s, 2 * s, '#6b5344');
+/* ---------- succulent sprites ---------- */
+
+function drawSeed(ctx, x, y) {
+  px(ctx, x - 2, y - 2, 4, 4, COLORS.soilDark);
+  px(ctx, x - 1, y - 1, 2, 2, '#6b5344');
 }
 
 function drawAwaken(ctx, x, y) {
@@ -45,12 +49,10 @@ function drawGrowing(ctx, x, y, variant) {
   px(ctx, x - 2, y - 4, 4, 4, COLORS.leaf);
 }
 
-function drawPreBranch(ctx, x, y, variant, branchHint) {
-  const alpha = branchHint ? 0.85 : 1;
-  ctx.globalAlpha = alpha;
+function drawPreBranch(ctx, x, y, variant) {
   drawGrowing(ctx, x, y, variant);
   px(ctx, x - 1, y - 14, 2, 4, COLORS.leafPale);
-  ctx.globalAlpha = 1;
+  px(ctx, x - 2, y - 16, 4, 2, COLORS.sparkle);
 }
 
 function drawRosette(ctx, x, y, stage, variant) {
@@ -68,6 +70,11 @@ function drawRosette(ctx, x, y, stage, variant) {
     px(ctx, x - 5, y - 12, 2, 2, '#e07a9a');
     px(ctx, x + 3, y - 11, 2, 2, '#e07a9a');
   }
+  if (stage >= 8) {
+    px(ctx, x - 1, y - 18, 2, 8, COLORS.leafMid);
+    px(ctx, x - 3, y - 21, 6, 4, COLORS.flower);
+    px(ctx, x - 1, y - 22, 2, 2, '#fff3b0');
+  }
 }
 
 function drawDesert(ctx, x, y, stage) {
@@ -80,6 +87,10 @@ function drawDesert(ctx, x, y, stage) {
   }
   px(ctx, x - 2, y - 2, w, 4, COLORS.soilLight);
   px(ctx, x - 4, y - 8, 8, 6, '#6b8a9a');
+  if (stage >= 8) {
+    px(ctx, x - 6, y - 11, 3, 3, '#8aa8b8');
+    px(ctx, x + 4, y - 10, 3, 3, '#8aa8b8');
+  }
 }
 
 function drawGarden(ctx, x, y, stage) {
@@ -101,22 +112,148 @@ function drawGarden(ctx, x, y, stage) {
   }
 }
 
-function drawBranchSilhouette(ctx, x, y, branchId, alpha) {
+/* ---------- fern sprites ---------- */
+
+function drawFrond(ctx, x, y, dirX, len, color, droop = 0) {
+  for (let i = 0; i < len; i += 1) {
+    const fx = x + dirX * i * 2;
+    const fy = y - i * 2 + Math.floor((i * i * droop) / 8);
+    px(ctx, fx, fy, 2, 2, color);
+    if (i > 0 && i % 2 === 0) {
+      px(ctx, fx - 2, fy - 1, 2, 2, color);
+      px(ctx, fx + 2, fy - 1, 2, 2, color);
+    }
+  }
+}
+
+function drawFiddlehead(ctx, x, y) {
+  px(ctx, x - 1, y - 6, 2, 6, COLORS.leafMid);
+  px(ctx, x - 3, y - 9, 4, 4, COLORS.leafYoung);
+  px(ctx, x - 1, y - 8, 2, 2, COLORS.leafPale);
+}
+
+function drawFernSmall(ctx, x, y, variant) {
+  const c = [COLORS.leafBright, COLORS.leafMid, COLORS.leafYoung][variant % 3];
+  px(ctx, x - 1, y - 8, 2, 8, COLORS.leaf);
+  drawFrond(ctx, x - 1, y - 8, -1, 3, c);
+  drawFrond(ctx, x + 1, y - 8, 1, 3, c);
+}
+
+function drawFernGrowing(ctx, x, y, variant) {
+  const c = [COLORS.leafBright, COLORS.leafMid, COLORS.leafYoung][variant % 3];
+  px(ctx, x - 1, y - 12, 2, 12, COLORS.leaf);
+  drawFrond(ctx, x - 1, y - 10, -1, 4, c);
+  drawFrond(ctx, x + 1, y - 10, 1, 4, c);
+  drawFrond(ctx, x, y - 12, 0, 3, COLORS.leafPale);
+}
+
+function drawFernPreBranch(ctx, x, y, variant) {
+  drawFernGrowing(ctx, x, y, variant);
+  px(ctx, x - 3, y - 18, 2, 2, COLORS.leafYoung);
+  px(ctx, x + 2, y - 17, 2, 2, COLORS.leafYoung);
+  px(ctx, x - 1, y - 20, 2, 2, COLORS.sparkle);
+}
+
+function drawFernCanopy(ctx, x, y, stage) {
+  px(ctx, x - 1, y - 12, 2, 12, COLORS.leafDark);
+  const spread = stage >= 8 ? 6 : 5;
+  drawFrond(ctx, x - 1, y - 10, -1, spread, COLORS.leaf);
+  drawFrond(ctx, x + 1, y - 10, 1, spread, COLORS.leaf);
+  drawFrond(ctx, x - 2, y - 8, -1, spread - 1, COLORS.leafMid);
+  drawFrond(ctx, x + 2, y - 8, 1, spread - 1, COLORS.leafMid);
+  drawFrond(ctx, x, y - 12, 0, 4, COLORS.leafBright);
+  if (stage >= 8) {
+    px(ctx, x - 10, y - 22, 2, 2, COLORS.leafPale);
+    px(ctx, x + 8, y - 21, 2, 2, COLORS.leafPale);
+  }
+}
+
+function drawFernCascade(ctx, x, y, stage) {
+  px(ctx, x - 1, y - 10, 2, 10, COLORS.leafDark);
+  const len = stage >= 8 ? 6 : 5;
+  drawFrond(ctx, x - 1, y - 10, -1, len, COLORS.leafMid, 3);
+  drawFrond(ctx, x + 1, y - 10, 1, len, COLORS.leafMid, 3);
+  drawFrond(ctx, x - 2, y - 7, -1, len - 1, COLORS.leafBright, 4);
+  drawFrond(ctx, x + 2, y - 7, 1, len - 1, COLORS.leafBright, 4);
+  if (stage >= 8) {
+    px(ctx, x - 12, y - 2, 2, 3, COLORS.leafYoung);
+    px(ctx, x + 10, y - 1, 2, 3, COLORS.leafYoung);
+  }
+}
+
+function drawFernColumn(ctx, x, y, stage) {
+  const h = stage >= 8 ? 26 : 20;
+  px(ctx, x - 1, y - h, 2, h, COLORS.leaf);
+  for (let i = 2; i < h - 2; i += 4) {
+    px(ctx, x - 4, y - i, 3, 2, COLORS.leafMid);
+    px(ctx, x + 1, y - i - 2, 3, 2, COLORS.leafMid);
+  }
+  px(ctx, x - 2, y - h - 3, 4, 4, COLORS.leafPale);
+  if (stage >= 8) {
+    px(ctx, x - 1, y - h - 6, 2, 3, COLORS.sparkle);
+  }
+}
+
+/* ---------- dispatch ---------- */
+
+function drawSpeciesStage(ctx, plant, x, y) {
+  const { stage, variant: v, branch, speciesId } = plant;
+
+  if (speciesId === 'fern') {
+    if (stage <= 1) drawSeed(ctx, x, y);
+    else if (stage === 2) drawAwaken(ctx, x, y);
+    else if (stage === 3) drawFiddlehead(ctx, x, y);
+    else if (stage === 4) drawFernSmall(ctx, x, y, v);
+    else if (stage === 5) drawFernGrowing(ctx, x, y, v);
+    else if (stage === 6) drawFernPreBranch(ctx, x, y, v);
+    else {
+      const b = branch ?? 'canopy';
+      if (b === 'canopy') drawFernCanopy(ctx, x, y, stage);
+      else if (b === 'cascade') drawFernCascade(ctx, x, y, stage);
+      else drawFernColumn(ctx, x, y, stage);
+    }
+    return;
+  }
+
+  if (stage <= 1) drawSeed(ctx, x, y);
+  else if (stage === 2) drawAwaken(ctx, x, y);
+  else if (stage === 3) drawSprout(ctx, x, y, v);
+  else if (stage === 4) drawSeedling(ctx, x, y, v);
+  else if (stage === 5) drawGrowing(ctx, x, y, v);
+  else if (stage === 6) drawPreBranch(ctx, x, y, v);
+  else {
+    const b = branch ?? 'rosette';
+    if (b === 'rosette') drawRosette(ctx, x, y, stage, v);
+    else if (b === 'desert') drawDesert(ctx, x, y, stage);
+    else drawGarden(ctx, x, y, stage);
+  }
+}
+
+function drawBranchSilhouette(ctx, x, y, speciesId, branchId, alpha) {
   ctx.globalAlpha = alpha;
-  if (branchId === 'rosette') drawRosette(ctx, x, y, 7, 0);
-  else if (branchId === 'desert') drawDesert(ctx, x, y, 7);
-  else drawGarden(ctx, x, y, 7);
+  if (speciesId === 'fern') {
+    if (branchId === 'canopy') drawFernCanopy(ctx, x, y, 7);
+    else if (branchId === 'cascade') drawFernCascade(ctx, x, y, 7);
+    else drawFernColumn(ctx, x, y, 7);
+  } else {
+    if (branchId === 'rosette') drawRosette(ctx, x, y, 7, 0);
+    else if (branchId === 'desert') drawDesert(ctx, x, y, 7);
+    else drawGarden(ctx, x, y, 7);
+  }
   ctx.globalAlpha = 1;
 }
 
-export function drawPlant(ctx, plant, env) {
+export function drawPlant(ctx, plant, tSec, selected) {
   const x = plant.x * GAME_W;
   const y = plant.y * GAME_H;
-  const stage = plant.stage;
-  const branch = plant.branch;
-  const v = plant.variant;
 
   ctx.save();
+
+  const sway = plant.stage >= 4 && !plant.withered
+    ? Math.round(Math.sin(tSec * 1.6 + plant.x * 20) * 1)
+    : 0;
+  ctx.translate(sway, 0);
+
   if (plant.stageUpAnim > 0) {
     const pulse = 1 + Math.sin(plant.stageUpAnim * 12) * 0.08;
     ctx.translate(x, y);
@@ -124,21 +261,12 @@ export function drawPlant(ctx, plant, env) {
     ctx.translate(-x, -y);
   }
 
-  if (stage <= 1) drawSeed(ctx, x, y, stage);
-  else if (stage === 2) drawAwaken(ctx, x, y);
-  else if (stage === 3) drawSprout(ctx, x, y, v);
-  else if (stage === 4) drawSeedling(ctx, x, y, v);
-  else if (stage === 5) drawGrowing(ctx, x, y, v);
-  else if (stage === 6) {
-    const scores = getBranchScores(plant.speciesId, plant.care.snapshot());
-    const top = scores.sort((a, b) => b.score - a.score)[0];
-    drawPreBranch(ctx, x, y, v, top?.id);
-  } else if (stage >= 7) {
-    const b = branch ?? 'rosette';
-    if (b === 'rosette') drawRosette(ctx, x, y, stage, v);
-    else if (b === 'desert') drawDesert(ctx, x, y, stage);
-    else drawGarden(ctx, x, y, stage);
+  if (plant.withered) {
+    ctx.filter = 'saturate(0.25) brightness(0.85)';
   }
+
+  drawSpeciesStage(ctx, plant, x, y);
+  ctx.filter = 'none';
 
   for (const s of plant.sparkles) {
     const a = s.life / s.maxLife;
@@ -147,17 +275,49 @@ export function drawPlant(ctx, plant, env) {
     ctx.globalAlpha = 1;
   }
 
+  if (plant.withered && Math.sin(tSec * 4) > 0) {
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = COLORS.water;
+    ctx.fillText('💧', x, y - 30);
+  }
+
+  if (plant.isHarvestable) {
+    const bob = Math.round(Math.sin(tSec * 3) * 2);
+    ctx.font = '8px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = COLORS.flower;
+    ctx.fillText('✦', x, y - 32 + bob);
+  }
+
+  if (selected) {
+    ctx.strokeStyle = COLORS.sparkle;
+    ctx.globalAlpha = 0.7;
+    const bx = x - 14;
+    const by = y - 28;
+    const bw = 28;
+    const bh = 32;
+    ctx.strokeRect(bx, by, 4, 1);
+    ctx.strokeRect(bx, by, 1, 4);
+    ctx.strokeRect(bx + bw - 4, by, 4, 1);
+    ctx.strokeRect(bx + bw - 1, by, 1, 4);
+    ctx.strokeRect(bx, by + bh - 1, 4, 1);
+    ctx.strokeRect(bx, by + bh - 4, 1, 4);
+    ctx.strokeRect(bx + bw - 4, by + bh - 1, 4, 1);
+    ctx.strokeRect(bx + bw - 1, by + bh - 4, 1, 4);
+    ctx.globalAlpha = 1;
+  }
+
   ctx.restore();
 }
+
+/* ---------- renderer ---------- */
 
 export class PixelRenderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.scale = 1;
-    this.offsetX = 0;
-    this.offsetY = 0;
-    this.selectedPlant = null;
   }
 
   resize() {
@@ -171,107 +331,166 @@ export class PixelRenderer {
     this.canvas.height = GAME_H * this.scale;
     this.canvas.style.width = `${this.canvas.width}px`;
     this.canvas.style.height = `${this.canvas.height}px`;
-    this.offsetX = (container.clientWidth - this.canvas.width) / 2;
-    this.offsetY = (container.clientHeight - this.canvas.height) / 2;
     this.ctx.imageSmoothingEnabled = false;
   }
 
   screenToGame(sx, sy) {
     const rect = this.canvas.getBoundingClientRect();
-    const x = ((sx - rect.left) / this.scale);
-    const y = ((sy - rect.top) / this.scale);
+    const x = (sx - rect.left) / this.scale;
+    const y = (sy - rect.top) / this.scale;
     return { x: x / GAME_W, y: y / GAME_H, gx: x, gy: y };
   }
 
-  render(terrarium, uiState) {
+  render(terrarium, uiState = {}) {
     const ctx = this.ctx;
+    const tSec = terrarium.totalPlayTime;
     ctx.save();
     ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     ctx.clearRect(0, 0, GAME_W, GAME_H);
 
-    this.drawBackground(ctx, terrarium);
-    this.drawTerrarium(ctx, terrarium);
-    this.drawParticles(ctx, terrarium);
+    this.drawSky(ctx, terrarium);
+    this.drawJar(ctx, terrarium);
+    this.drawParticlesBehind(ctx, terrarium, tSec);
 
     for (const plant of terrarium.plants) {
-      drawPlant(ctx, plant, terrarium.environment);
+      drawPlant(ctx, plant, tSec, plant === uiState.selectedPlant);
     }
 
-    if (uiState?.showBranchPreview && terrarium.plants[0]?.stage === 6) {
-      this.drawBranchPreview(ctx, terrarium.plants[0]);
+    this.drawParticlesFront(ctx, terrarium, tSec);
+
+    const branchingPlant = terrarium.plants.find((p) => p.stage === 6);
+    if (branchingPlant) {
+      this.drawBranchPreview(ctx, branchingPlant);
     }
 
     this.drawDayNightOverlay(ctx, terrarium);
     this.drawTopHUD(ctx, terrarium);
 
-    if (uiState?.toast) {
-      this.drawToast(ctx, uiState.toast);
-    }
-
     ctx.restore();
   }
 
-  drawBackground(ctx, terrarium) {
+  drawSky(ctx, terrarium) {
     const grd = ctx.createLinearGradient(0, 0, 0, GAME_H);
-    grd.addColorStop(0, COLORS.bgMid);
-    grd.addColorStop(1, COLORS.bgDark);
+    if (terrarium.isDay) {
+      grd.addColorStop(0, '#2d4a63');
+      grd.addColorStop(0.5, COLORS.bgMid);
+      grd.addColorStop(1, COLORS.bgDark);
+    } else {
+      grd.addColorStop(0, '#141b2a');
+      grd.addColorStop(1, COLORS.bgDark);
+    }
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, GAME_W, GAME_H);
 
-    for (let i = 0; i < 20; i += 1) {
-      const sx = (i * 37 + terrarium.time * 50) % GAME_W;
-      const sy = (i * 23) % (GAME_H * 0.5);
-      px(ctx, sx, sy, 1, 1, COLORS.glassLo);
+    if (terrarium.isDay) {
+      const frac = terrarium.time / 0.5;
+      const sx = 24 + frac * (GAME_W - 48);
+      const sy = 26 - Math.sin(frac * Math.PI) * 12;
+      px(ctx, sx - 3, sy - 3, 6, 6, COLORS.accent);
+      px(ctx, sx - 2, sy - 2, 4, 4, '#f8c58a');
+      px(ctx, sx - 1, sy - 5, 2, 1, COLORS.accent);
+      px(ctx, sx - 1, sy + 4, 2, 1, COLORS.accent);
+      px(ctx, sx - 5, sy - 1, 1, 2, COLORS.accent);
+      px(ctx, sx + 4, sy - 1, 1, 2, COLORS.accent);
+    } else {
+      const frac = (terrarium.time - 0.5) / 0.5;
+      const mx = 24 + frac * (GAME_W - 48);
+      const my = 24 - Math.sin(frac * Math.PI) * 10;
+      px(ctx, mx - 3, my - 3, 6, 6, COLORS.moon);
+      px(ctx, mx - 1, my - 2, 3, 3, '#9bb5d6');
+      px(ctx, mx - 2, my - 1, 1, 1, '#5c7a9c');
+
+      for (let i = 0; i < 24; i += 1) {
+        const starX = (i * 53 + 17) % GAME_W;
+        const starY = (i * 31 + 5) % 60;
+        const tw = Math.sin(terrarium.totalPlayTime * 2 + i) > 0.3 ? 1 : 0.4;
+        ctx.globalAlpha = tw;
+        px(ctx, starX, starY, 1, 1, COLORS.sun);
+        ctx.globalAlpha = 1;
+      }
     }
   }
 
-  drawTerrarium(ctx, terrarium) {
-    const jarX = 72;
-    const jarY = 28;
-    const jarW = 240;
-    const jarH = 150;
+  drawJar(ctx, terrarium) {
+    const { x: jx, y: jy, w: jw, h: jh } = JAR;
 
-    px(ctx, jarX - 4, jarY + jarH, jarW + 8, 8, COLORS.soilDark);
-    px(ctx, jarX, jarY + jarH - 4, jarW, 6, COLORS.soil);
+    px(ctx, jx - 8, jy + jh, jw + 16, 6, '#3a4a5a');
+    px(ctx, jx - 6, jy + jh + 6, jw + 12, 3, '#2d3a48');
 
-    const soilH = 28;
-    for (let row = 0; row < soilH; row += 2) {
-      for (let col = 0; col < jarW; col += 4) {
-        const c = (col + row) % 8 === 0 ? COLORS.soilLight : COLORS.soil;
-        px(ctx, jarX + col, jarY + jarH - soilH + row, 4, 2, c);
+    px(ctx, jx + 20, jy - 8, jw - 40, 6, '#6b5344');
+    px(ctx, jx + 24, jy - 10, jw - 48, 3, '#7d6350');
+    px(ctx, jx + 20, jy - 3, jw - 40, 2, '#54412f');
+
+    ctx.globalAlpha = 0.12;
+    ctx.fillStyle = COLORS.glass;
+    ctx.fillRect(jx + 3, jy + 3, jw - 6, jh - 6);
+    ctx.globalAlpha = 1;
+
+    const soilTop = jy + jh - SOIL_H;
+    for (let row = 0; row < SOIL_H; row += 2) {
+      for (let col = 4; col < jw - 4; col += 4) {
+        const c = (col + row) % 12 === 0
+          ? COLORS.soilLight
+          : row > SOIL_H - 8 ? COLORS.soilDark : COLORS.soil;
+        px(ctx, jx + col, soilTop + row, 4, 2, c);
       }
     }
+    for (let col = 8; col < jw - 8; col += 24) {
+      px(ctx, jx + col, soilTop - 1, 3, 2, '#7a95a5');
+    }
 
-    ctx.globalAlpha = 0.15;
-    ctx.fillStyle = COLORS.glass;
-    ctx.fillRect(jarX + 4, jarY + 8, jarW - 8, jarH - 12);
-    ctx.globalAlpha = 1;
+    px(ctx, jx + 24, soilTop - 5, 10, 6, '#5c7a8a');
+    px(ctx, jx + 26, soilTop - 7, 6, 3, '#6b8a9a');
+    px(ctx, jx + jw - 44, soilTop - 4, 12, 5, '#4a6d7a');
+    px(ctx, jx + jw - 40, soilTop - 6, 5, 3, '#5c7a8a');
 
     ctx.strokeStyle = COLORS.glassLo;
     ctx.lineWidth = 2;
-    ctx.strokeRect(jarX, jarY, jarW, jarH);
+    ctx.strokeRect(jx, jy, jw, jh);
+    px(ctx, jx, jy, 3, 3, COLORS.bgDark);
+    px(ctx, jx + jw - 3, jy, 3, 3, COLORS.bgDark);
 
-    px(ctx, jarX + 8, jarY + 4, jarW - 40, 2, COLORS.glassHi);
-    px(ctx, jarX + jarW - 30, jarY + 12, 2, jarH - 24, COLORS.glassHi);
+    px(ctx, jx + 10, jy + 6, jw - 60, 2, COLORS.glassHi);
+    px(ctx, jx + jw - 26, jy + 14, 2, jh - 40, COLORS.glassHi);
+    ctx.globalAlpha = 0.5;
+    px(ctx, jx + 6, jy + 14, 2, jh - 50, COLORS.glassHi);
+    ctx.globalAlpha = 1;
 
-    const moisture = terrarium.moisture;
-    if (moisture > 70) {
-      ctx.globalAlpha = 0.25;
-      for (let i = 0; i < 5; i += 1) {
-        px(ctx, jarX + 20 + i * 40, jarY + 60, 20, 1, COLORS.waterLight);
+    if (terrarium.moisture > 70) {
+      ctx.globalAlpha = Math.min(0.35, (terrarium.moisture - 70) / 80);
+      for (let i = 0; i < 6; i += 1) {
+        px(ctx, jx + 14 + i * 38, jy + 30 + (i % 3) * 16, 22, 1, COLORS.waterLight);
+        px(ctx, jx + 20 + i * 36, jy + 38 + (i % 2) * 20, 12, 1, COLORS.waterPale);
       }
       ctx.globalAlpha = 1;
     }
   }
 
-  drawParticles(ctx, terrarium) {
+  drawParticlesBehind(ctx, terrarium, tSec) {
     for (const p of terrarium.particles) {
+      if (p.kind !== 'firefly') continue;
+      const x = p.x * GAME_W;
+      const y = p.y * GAME_H;
+      const flicker = 0.4 + Math.abs(Math.sin(tSec * 3 + x)) * 0.6;
+      ctx.globalAlpha = Math.min(1, p.life) * flicker;
+      px(ctx, x, y, 2, 2, '#c9f27e');
+      ctx.globalAlpha = 0.25 * flicker;
+      px(ctx, x - 1, y - 1, 4, 4, '#c9f27e');
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  drawParticlesFront(ctx, terrarium) {
+    for (const p of terrarium.particles) {
+      if (p.kind === 'firefly') continue;
       const x = p.x * GAME_W;
       const y = p.y * GAME_H;
       const a = Math.min(1, p.life * 2);
       ctx.globalAlpha = a;
       if (p.kind === 'drop') {
         px(ctx, x, y, 2, 3, COLORS.water);
+      } else if (p.kind === 'seedfly') {
+        px(ctx, x, y, 2, 2, COLORS.flower);
       } else {
         px(ctx, x, y, 3, 3, COLORS.waterPale);
       }
@@ -280,102 +499,83 @@ export class PixelRenderer {
   }
 
   drawBranchPreview(ctx, plant) {
-    const scores = getBranchScores(plant.speciesId, plant.care.snapshot()).sort((a, b) => b.score - a.score);
-    const max = scores[0]?.score || 1;
-    const positions = [
-      { x: 0.28, branch: 'rosette' },
-      { x: 0.5, branch: 'desert' },
-      { x: 0.72, branch: 'garden' },
-    ];
+    const scores = getBranchScores(plant.speciesId, plant.care.snapshot());
+    const sorted = [...scores].sort((a, b) => b.score - a.score);
+    const max = sorted[0]?.score || 1;
 
-    ctx.globalAlpha = 0.35;
+    ctx.globalAlpha = 0.4;
     ctx.fillStyle = COLORS.bgDark;
-    ctx.fillRect(50, 160, 284, 44);
+    ctx.fillRect(50, 158, 284, 48);
     ctx.globalAlpha = 1;
 
-    for (const pos of positions) {
-      const score = scores.find((s) => s.id === pos.branch);
-      const alpha = 0.25 + ((score?.score ?? 0) / max) * 0.55;
-      drawBranchSilhouette(ctx, pos.x * GAME_W, 178, pos.branch, alpha);
-    }
+    const positions = [0.28, 0.5, 0.72];
+    scores.forEach((s, i) => {
+      const alpha = 0.25 + (s.score / max) * 0.55;
+      drawBranchSilhouette(ctx, positions[i] * GAME_W, 196, plant.speciesId, s.id, alpha);
+    });
 
     ctx.fillStyle = COLORS.textDim;
     ctx.font = '8px "Pixelify Sans", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('Đang định hình...', GAME_W / 2, 170);
+    ctx.fillText('Đang định hình...', GAME_W / 2, 167);
   }
 
   drawDayNightOverlay(ctx, terrarium) {
     if (terrarium.isDay) {
-      ctx.globalAlpha = 0.06;
+      ctx.globalAlpha = 0.05;
       ctx.fillStyle = COLORS.sunWarm;
     } else {
-      ctx.globalAlpha = 0.28;
+      ctx.globalAlpha = 0.25;
       ctx.fillStyle = COLORS.bgDark;
-      for (let i = 0; i < 12; i += 1) {
-        px(ctx, 20 + i * 30, 8 + (i % 3) * 4, 1, 1, COLORS.moon);
-      }
     }
     ctx.fillRect(0, 0, GAME_W, GAME_H);
     ctx.globalAlpha = 1;
   }
 
   drawTopHUD(ctx, terrarium) {
-    const timeIcon = terrarium.isDay ? '☀' : '🌙';
     const hours = Math.floor(terrarium.time * 24);
     const mins = Math.floor((terrarium.time * 24 - hours) * 60);
+    const timeIcon = terrarium.isDay ? '☀' : '☾';
 
+    ctx.globalAlpha = 0.82;
     ctx.fillStyle = COLORS.bgLight;
-    ctx.globalAlpha = 0.85;
-    ctx.fillRect(8, 6, 110, 14);
-    ctx.fillRect(GAME_W - 118, 6, 110, 14);
+    ctx.fillRect(6, 5, 96, 26);
+    ctx.fillRect(GAME_W - 102, 5, 96, 26);
     ctx.globalAlpha = 1;
 
+    ctx.strokeStyle = COLORS.glassLo;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(6.5, 5.5, 95, 25);
+    ctx.strokeRect(GAME_W - 101.5, 5.5, 95, 25);
+
     ctx.fillStyle = COLORS.text;
-    ctx.font = '8px "Pixelify Sans", monospace';
+    ctx.font = '9px "Pixelify Sans", monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`${timeIcon} ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`, 12, 16);
+    ctx.fillText(`${timeIcon} ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`, 11, 15);
+    ctx.fillStyle = COLORS.textDim;
+    ctx.fillText(`Hạt: ${terrarium.seeds}`, 60, 15);
 
-    ctx.textAlign = 'right';
-    ctx.fillText(`💧 ${Math.round(terrarium.moisture)}%`, GAME_W - 12, 16);
+    this.drawBar(ctx, 11, 21, 86, 5, terrarium.moisture / 100, COLORS.water, 'Ẩm');
 
-    this.drawBar(ctx, 12, 22, 60, 4, terrarium.moisture / 100, COLORS.water);
-    this.drawBar(ctx, GAME_W - 72, 22, 60, 4, terrarium.ambientLight / 100, COLORS.sunWarm);
+    ctx.fillStyle = COLORS.text;
+    ctx.textAlign = 'left';
+    ctx.fillText(`Cây: ${terrarium.plants.length}/4`, GAME_W - 96, 15);
+
+    this.drawBar(ctx, GAME_W - 96, 21, 86, 5, terrarium.ambientLight / 100, COLORS.sunWarm, 'Sáng');
   }
 
   drawBar(ctx, x, y, w, h, pct, color) {
     px(ctx, x, y, w, h, COLORS.bgDark);
-    px(ctx, x, y, Math.floor(w * pct), h, color);
-  }
-
-  drawToast(ctx, toast) {
-    const text = toast.branch
-      ? `Nhánh: ${BRANCH_LABELS[toast.branch] ?? toast.branch}`
-      : toast.stage
-        ? `Giai đoạn: ${STAGE_NAMES[toast.stage] ?? toast.stage}`
-        : toast.message ?? '';
-
-    const w = Math.min(GAME_W - 40, text.length * 5 + 24);
-    const x = (GAME_W - w) / 2;
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = COLORS.bgLight;
-    ctx.fillRect(x, 100, w, 18);
-    ctx.strokeStyle = COLORS.leafBright;
-    ctx.strokeRect(x, 100, w, 18);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = COLORS.text;
-    ctx.font = '8px "Pixelify Sans", monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(text, GAME_W / 2, 112);
+    px(ctx, x + 1, y + 1, Math.max(0, Math.floor((w - 2) * Math.min(1, pct))), h - 2, color);
   }
 }
 
 export function getPlantAt(terrarium, gx, gy) {
   for (let i = terrarium.plants.length - 1; i >= 0; i -= 1) {
     const p = terrarium.plants[i];
-    const px = p.x * GAME_W;
-    const py = p.y * GAME_H;
-    if (Math.abs(gx - px) < 20 && Math.abs(gy - py) < 24) return p;
+    const cx = p.x * GAME_W;
+    const cy = p.y * GAME_H;
+    if (Math.abs(gx - cx) < 22 && gy > cy - 40 && gy < cy + 14) return p;
   }
   return null;
 }
