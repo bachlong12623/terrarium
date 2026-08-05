@@ -10,26 +10,65 @@ function px(ctx, x, y, w, h, color) {
   ctx.fillRect(Math.floor(x), Math.floor(y), w, h);
 }
 
-function drawFatLeaf(ctx, x, y, dx, dy, len, w, color, hi) {
-  for (let i = 0; i < len; i += 1) {
-    const lx = x + dx * i;
-    const ly = y + dy * i;
-    px(ctx, lx - Math.floor(w / 2), ly - 1, w, 4, color);
-    px(ctx, lx - Math.floor(w / 2) + 1, ly, w - 2, 2, hi ?? color);
-  }
+function shade(hex, amount) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255;
+  let g = (n >> 8) & 255;
+  let b = n & 255;
+  r = Math.max(0, Math.min(255, r + amount));
+  g = Math.max(0, Math.min(255, g + amount));
+  b = Math.max(0, Math.min(255, b + amount));
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }
 
-function drawRosetteLeaf(ctx, cx, cy, angle, radius, w, color, hi) {
+function drawSoftShadow(ctx, cx, cy, rx, ry, alpha = 0.22) {
+  ctx.globalAlpha = alpha;
+  for (let row = 0; row < ry * 2; row += 1) {
+    const t = row / (ry * 2);
+    const halfW = rx * Math.sin(Math.PI * t);
+    px(ctx, cx - halfW, cy - ry + row, halfW * 2, 1, COLORS.shadowDeep);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawVolumeLeaf(ctx, cx, cy, angle, radius, w, base) {
   const cos = Math.cos(angle);
   const sin = Math.sin(angle);
-  const steps = Math.max(4, Math.floor(radius / 2));
+  const steps = Math.max(5, Math.floor(radius / 2));
+  const hi = shade(base, 22);
+  const lo = shade(base, -28);
+  const lit = sin < -0.2;
+
   for (let i = 0; i < steps; i += 1) {
     const t = i / steps;
     const lx = cx + cos * radius * t;
     const ly = cy + sin * radius * t * 0.55 - 4 * S;
-    px(ctx, lx - w / 2, ly - 2, w, 5, color);
-    if (i === steps - 1) px(ctx, lx - w / 2 + 1, ly - 3, w - 2, 2, hi ?? color);
+    const edge = lit ? hi : lo;
+    px(ctx, lx - w / 2, ly - 2, w, 5, i < steps * 0.35 ? lo : base);
+    px(ctx, lx - w / 2 + (lit ? 0 : 1), ly - 1, w - 2, 2, i === steps - 1 ? edge : base);
+    if (i === steps - 1) px(ctx, lx - 1, ly - 3, 2, 2, hi);
   }
+}
+
+function drawFatLeaf(ctx, x, y, dx, dy, len, w, color, hi) {
+  const lo = shade(color, -24);
+  const highlight = hi ?? shade(color, 18);
+  for (let i = 0; i < len; i += 1) {
+    const lx = x + dx * i;
+    const ly = y + dy * i;
+    const t = i / len;
+    px(ctx, lx - Math.floor(w / 2), ly - 1, w, 4, t < 0.4 ? lo : color);
+    px(ctx, lx - Math.floor(w / 2) + (dx < 0 ? 0 : 1), ly, w - 2, 2, t > 0.6 ? highlight : color);
+  }
+}
+
+function drawRosetteLeaf(ctx, cx, cy, angle, radius, w, color, hi) {
+  drawVolumeLeaf(ctx, cx, cy, angle, radius, w, color);
+}
+
+function drawPlantShadow(ctx, x, y, stage) {
+  const spread = Math.min(28 * S, 8 * S + stage * 2 * S);
+  drawSoftShadow(ctx, x, y + 4 * S, spread, 5 * S, 0.18 + stage * 0.015);
 }
 
 /* ---------- shared early stages ---------- */
@@ -92,12 +131,13 @@ function drawPreBranch(ctx, x, y, variant) {
 function drawRosette(ctx, x, y, stage, variant) {
   const layers = stage >= 8 ? 12 : 9;
   const radius = stage >= 8 ? 22 * S : 17 * S;
-  const colors = [COLORS.leafMid, COLORS.leafBright, COLORS.leafYoung, COLORS.leafPale];
-  for (let i = 0; i < layers; i += 1) {
+  const colors = [shade(COLORS.leafMid, -12), COLORS.leafMid, COLORS.leafBright, COLORS.leafYoung];
+  for (let i = layers - 1; i >= 0; i -= 1) {
     const angle = (i / layers) * Math.PI * 2 + variant * 0.35;
-    drawRosetteLeaf(ctx, x, y, angle, radius, 9, colors[i % colors.length], COLORS.leafPale);
+    const layerRadius = radius * (0.55 + (i / layers) * 0.45);
+    drawVolumeLeaf(ctx, x, y, angle, layerRadius, 9, colors[i % colors.length]);
   }
-  px(ctx, x - 4, y - 8, 8, 6, COLORS.leaf);
+  px(ctx, x - 4, y - 8, 8, 6, shade(COLORS.leaf, -10));
   px(ctx, x - 2, y - 10, 4, 3, COLORS.leafMid);
   if (variant === 1) {
     px(ctx, x - 8, y - 14, 3, 3, COLORS.bloom);
@@ -106,23 +146,25 @@ function drawRosette(ctx, x, y, stage, variant) {
   if (stage >= 8) {
     px(ctx, x - 2, y - 28, 4, 12, COLORS.leafMid);
     px(ctx, x - 5, y - 34, 10, 6, COLORS.flower);
-    px(ctx, x - 2, y - 35, 4, 3, '#fff3b0');
+    px(ctx, x - 2, y - 35, 4, 3, COLORS.whiteHot);
     px(ctx, x - 6, y - 32, 2, 2, COLORS.sunCore);
     px(ctx, x + 4, y - 32, 2, 2, COLORS.sunCore);
   }
 }
 
 function drawDesert(ctx, x, y, stage) {
-  const blues = [COLORS.succulentBlueLo, COLORS.succulentBlue, COLORS.succulentBlueHi, '#7a9aaa'];
+  const blues = [COLORS.succulentBlueLo, COLORS.succulentBlue, COLORS.succulentBlueHi, COLORS.glassLo];
   const pads = stage >= 8
     ? [[0, 0, 10], [-10, 4, 8], [10, 3, 8], [-4, -8, 7], [8, -6, 6]]
     : [[0, 0, 8], [-8, 3, 6], [8, 2, 6]];
   for (let i = 0; i < pads.length; i += 1) {
     const [ox, oy, size] = pads[i];
     const c = blues[i % blues.length];
-    px(ctx, x + ox - size / 2, y + oy - size / 2, size, size - 1, c);
-    px(ctx, x + ox - size / 2 + 1, y + oy - size / 2, size - 2, 2, COLORS.succulentBlueHi);
-    px(ctx, x + ox - 1, y + oy - size / 2 - 1, 2, 1, COLORS.glassHi);
+    px(ctx, x + ox - size / 2, y + oy - size / 2 + 1, size, size - 1, shade(c, -18));
+    px(ctx, x + ox - size / 2, y + oy - size / 2, size, size - 2, c);
+    px(ctx, x + ox - size / 2 + 1, y + oy - size / 2, size - 2, 2, shade(c, 16));
+    px(ctx, x + ox - 1, y + oy - size / 2 - 1, 2, 1, COLORS.whiteHot);
+    px(ctx, x + ox + size / 2 - 2, y + oy + size / 2 - 2, 1, 1, shade(c, -22));
   }
   if (stage >= 8) {
     px(ctx, x - 3, y - 14, 6, 4, COLORS.succulentBlueHi);
@@ -148,6 +190,8 @@ function drawGarden(ctx, x, y, stage) {
 /* ---------- fern sprites ---------- */
 
 function drawFernFrond(ctx, bx, by, dirX, len, spread, stemColor, leafColor, droop = 0) {
+  const leafLo = shade(leafColor, -22);
+  const leafHi = shade(leafColor, 14);
   for (let i = 0; i < len; i += 1) {
     const fx = bx + dirX * i * 3;
     const fy = by - i * 2 + Math.floor((i * i * droop) / 12);
@@ -156,8 +200,8 @@ function drawFernFrond(ctx, bx, by, dirX, len, spread, stemColor, leafColor, dro
       const plen = Math.min(spread, 2 + Math.floor(i / 2));
       for (let p = 0; p < plen; p += 1) {
         const side = dirX >= 0 ? 1 : -1;
-        px(ctx, fx - side * (p + 1) * 3, fy - p, 3, 2, leafColor);
-        px(ctx, fx + side * (p + 1) * 3 - 1, fy - p - 1, 3, 2, COLORS.leafPale);
+        px(ctx, fx - side * (p + 1) * 3, fy - p, 3, 2, p % 2 === 0 ? leafLo : leafColor);
+        px(ctx, fx + side * (p + 1) * 3 - 1, fy - p - 1, 3, 2, leafHi);
       }
     }
   }
@@ -326,9 +370,10 @@ export function drawPlant(ctx, plant, tSec, selected) {
   }
 
   if (plant.withered) {
-    ctx.filter = 'saturate(0.25) brightness(0.85)';
+    ctx.filter = 'saturate(0.3) brightness(0.88) contrast(0.95)';
   }
 
+  drawPlantShadow(ctx, x, y, plant.stage);
   drawSpeciesStage(ctx, plant, x, y);
   ctx.filter = 'none';
 
@@ -354,7 +399,7 @@ export function drawPlant(ctx, plant, tSec, selected) {
     px(ctx, x - 5, hy, 2, 2, COLORS.flower);
     px(ctx, x + 3, hy, 2, 2, COLORS.flower);
     px(ctx, x, hy + 3, 2, 2, COLORS.flower);
-    px(ctx, x - 1, hy - 1, 2, 2, '#fff3b0');
+    px(ctx, x - 1, hy - 1, 2, 2, COLORS.whiteHot);
   }
 
   if (selected) {
@@ -419,14 +464,15 @@ export class PixelRenderer {
 
     this.drawSky(ctx, terrarium);
     this.drawHills(ctx, terrarium);
-    this.drawTable(ctx);
-    this.drawJar(ctx, terrarium);
+    this.drawTable(ctx, terrarium);
+    this.drawJarInterior(ctx, terrarium);
     this.drawParticlesBehind(ctx, terrarium, tSec);
 
     for (const plant of terrarium.plants) {
       drawPlant(ctx, plant, tSec, plant === uiState.selectedPlant);
     }
 
+    this.drawJarGlass(ctx, terrarium);
     this.drawParticlesFront(ctx, terrarium, tSec);
 
     const branchingPlant = terrarium.plants.find((p) => p.stage === 6);
@@ -448,6 +494,17 @@ export class PixelRenderer {
     bands.forEach((color, i) => {
       px(ctx, 0, i * bandH, GAME_W, bandH + 1, color);
     });
+
+    for (let y = 0; y < GAME_H; y += 3) {
+      for (let x = 0; x < GAME_W; x += 3) {
+        const n = (x * 13 + y * 7) % 11;
+        if (n < 2) {
+          ctx.globalAlpha = terrarium.isDay ? 0.04 : 0.06;
+          px(ctx, x, y, 1, 1, terrarium.isDay ? COLORS.whiteHot : COLORS.moonHi);
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
 
     if (terrarium.isDay) {
       this.drawClouds(ctx, terrarium);
@@ -474,8 +531,10 @@ export class PixelRenderer {
       const wave2 = Math.sin((x / GAME_W) * Math.PI * 3.8 + 1.2) * Math.round(5 * S);
       const farY = hillBase - farH + wave1;
       px(ctx, x, farY, 2, farH + Math.round(40 * S), COLORS.hillFar);
+      if (x % 6 === 0) px(ctx, x, farY - 1, 2, 1, shade(COLORS.hillFar, 12));
       const nearY = hillBase - nearH + wave2;
       px(ctx, x, nearY, 2, nearH + Math.round(50 * S), COLORS.hillNear);
+      px(ctx, x, nearY, 2, 2, shade(COLORS.hillNear, -15));
     }
 
     if (terrarium.isDay) {
@@ -518,7 +577,7 @@ export class PixelRenderer {
     px(ctx, sx - 6, sy - 6, 12, 12, COLORS.sunRay);
     px(ctx, sx - 5, sy - 5, 10, 10, COLORS.sunCore);
     px(ctx, sx - 3, sy - 3, 6, 6, COLORS.sun);
-    px(ctx, sx - 2, sy - 2, 4, 4, '#fff3b0');
+    px(ctx, sx - 2, sy - 2, 4, 4, COLORS.whiteHot);
   }
 
   drawMoon(ctx, mx, my) {
@@ -548,59 +607,59 @@ export class PixelRenderer {
     }
   }
 
-  drawJar(ctx, terrarium) {
+  drawJarInterior(ctx, terrarium) {
     const { x: jx, y: jy, w: jw, h: jh } = JAR;
 
     px(ctx, jx + Math.round(18 * S), jy - Math.round(10 * S), jw - Math.round(36 * S), Math.round(8 * S), COLORS.wood);
     px(ctx, jx + Math.round(22 * S), jy - Math.round(12 * S), jw - Math.round(44 * S), Math.round(4 * S), COLORS.woodHi);
     px(ctx, jx + Math.round(20 * S), jy - Math.round(4 * S), jw - Math.round(40 * S), Math.round(3 * S), COLORS.woodLo);
     px(ctx, jx + jw / 2 - Math.round(6 * S), jy - Math.round(14 * S), Math.round(12 * S), Math.round(4 * S), COLORS.woodShadow);
+    for (let i = 0; i < 6; i += 1) {
+      px(ctx, jx + Math.round(24 * S) + i * Math.round(18 * S), jy - Math.round(11 * S), 1, Math.round(5 * S), shade(COLORS.woodLo, -12));
+    }
 
-    ctx.globalAlpha = 0.06;
+    ctx.globalAlpha = 0.05;
     ctx.fillStyle = COLORS.glassTint;
     ctx.fillRect(jx + 2, jy + 2, jw - 4, jh - 4);
     ctx.globalAlpha = 1;
 
     const soilTop = jy + jh - SOIL_H;
+    px(ctx, jx + 3, soilTop - Math.round(4 * S), jw - 6, SOIL_H + Math.round(4 * S), shade(COLORS.soilDark, -8));
     for (let row = 0; row < SOIL_H; row += 2) {
-      for (let col = 4; col < jw - 4; col += 4) {
-        const noise = (col * 7 + row * 13) % 17;
-        const c = noise < 3
+      for (let col = 4; col < jw - 4; col += 3) {
+        const noise = (col * 7 + row * 13) % 19;
+        const depth = row / SOIL_H;
+        const c = noise < 2
           ? COLORS.soilPebb
-          : row > SOIL_H - 8
-            ? COLORS.soilDark
-            : noise < 8 ? COLORS.soilLight : COLORS.soil;
-        px(ctx, jx + col, soilTop + row, 4, 2, c);
+          : depth > 0.65
+            ? shade(COLORS.soilDark, -6)
+            : noise < 7 ? COLORS.soilLight : COLORS.soil;
+        px(ctx, jx + col, soilTop + row, 3, 2, c);
       }
     }
-    px(ctx, jx + 4, soilTop, jw - 8, 2, COLORS.soilLight);
-    px(ctx, jx + 6, soilTop - 1, jw - 12, 1, COLORS.moss);
+    px(ctx, jx + 4, soilTop, jw - 8, 3, COLORS.soilLight);
+    px(ctx, jx + 6, soilTop - 2, jw - 12, 2, COLORS.moss);
+    px(ctx, jx + 8, soilTop - 1, jw - 16, 1, shade(COLORS.moss, 12));
 
     const pebbles = [
-      [24, -4, 10, 6], [26, -6, 6, 3], [jw - 44, -3, 12, 5],
-      [jw - 40, -5, 5, 3], [jw / 2 - 8, -3, 8, 4],
+      [24, -5, 11, 7], [28, -7, 7, 4], [jw - 46, -4, 13, 6],
+      [jw - 42, -6, 6, 4], [jw / 2 - 10, -4, 10, 5],
+      [jw / 2 + 20, -3, 8, 4], [40, -2, 6, 3],
     ];
     for (const [ox, oy, pw, ph] of pebbles) {
+      px(ctx, jx + ox + 1, soilTop + oy + 1, pw, ph, shade(COLORS.soilDark, -10));
       px(ctx, jx + ox, soilTop + oy, pw, ph, COLORS.soilPebb);
-      px(ctx, jx + ox + 1, soilTop + oy, pw - 2, 1, COLORS.soilLight);
+      px(ctx, jx + ox + 1, soilTop + oy, pw - 2, 2, shade(COLORS.soilLight, 10));
+      px(ctx, jx + ox + pw - 2, soilTop + oy + ph - 1, 1, 1, shade(COLORS.soilDark, -15));
     }
 
-    ctx.strokeStyle = COLORS.glassLo;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(jx, jy, jw, jh);
-    ctx.strokeStyle = COLORS.glass;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(jx + 1, jy + 1, jw - 2, jh - 2);
-
-    px(ctx, jx + 8, jy + 5, jw - 70, 2, COLORS.glassHi);
-    px(ctx, jx + jw - 22, jy + 12, 2, jh - 36, COLORS.glassHi);
-    ctx.globalAlpha = 0.35;
-    px(ctx, jx + 5, jy + 12, 2, jh - 48, COLORS.glassHi);
-    px(ctx, jx + 14, jy + jh - 40, jw - 28, 1, COLORS.glass);
+    ctx.globalAlpha = 0.12;
+    px(ctx, jx + 2, jy + 2, Math.round(5 * S), jh - 4, shade(COLORS.glassEdge, -20));
+    px(ctx, jx + jw - Math.round(7 * S), jy + 2, Math.round(5 * S), jh - 4, shade(COLORS.glassEdge, -20));
     ctx.globalAlpha = 1;
 
     if (terrarium.moisture > 65) {
-      ctx.globalAlpha = Math.min(0.35, (terrarium.moisture - 65) / 70);
+      ctx.globalAlpha = Math.min(0.3, (terrarium.moisture - 65) / 70);
       for (let i = 0; i < 8; i += 1) {
         const row = i % 4;
         const fogY = jy + Math.round(24 * S) + row * Math.round(18 * S);
@@ -609,25 +668,62 @@ export class PixelRenderer {
       }
       ctx.globalAlpha = 1;
     }
-
-    if (terrarium.moisture > 80) {
-      ctx.globalAlpha = Math.min(0.2, (terrarium.moisture - 80) / 60);
-      px(ctx, jx + 4, jy + 8, 3, jh - 20, COLORS.waterPale);
-      px(ctx, jx + jw - 8, jy + 14, 2, jh - 30, COLORS.waterLight);
-      ctx.globalAlpha = 1;
-    }
   }
 
-  drawTable(ctx) {
+  drawJarGlass(ctx, terrarium) {
+    const { x: jx, y: jy, w: jw, h: jh } = JAR;
+
+    ctx.strokeStyle = COLORS.glassEdge;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(jx, jy, jw, jh);
+    ctx.strokeStyle = COLORS.glassLo;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(jx + 2, jy + 2, jw - 4, jh - 4);
+
+    px(ctx, jx, jy, 4, 4, shade(COLORS.glassEdge, -15));
+    px(ctx, jx + jw - 4, jy, 4, 4, shade(COLORS.glassEdge, -15));
+    px(ctx, jx, jy + jh - 4, 4, 4, shade(COLORS.glassEdge, -20));
+    px(ctx, jx + jw - 4, jy + jh - 4, 4, 4, shade(COLORS.glassEdge, -20));
+
+    ctx.globalAlpha = 0.55;
+    px(ctx, jx + Math.round(8 * S), jy + Math.round(6 * S), jw - Math.round(80 * S), 3, COLORS.glassReflect);
+    px(ctx, jx + jw - Math.round(24 * S), jy + Math.round(14 * S), 3, jh - Math.round(50 * S), COLORS.glassReflect);
+    ctx.globalAlpha = 0.3;
+    px(ctx, jx + Math.round(6 * S), jy + Math.round(14 * S), 2, jh - Math.round(52 * S), COLORS.glassHi);
+    px(ctx, jx + Math.round(16 * S), jy + jh - Math.round(44 * S), jw - Math.round(32 * S), 2, COLORS.glass);
+    ctx.globalAlpha = 0.15;
+    px(ctx, jx + jw - Math.round(12 * S), jy + Math.round(20 * S), 2, jh - Math.round(60 * S), shade(COLORS.glassLo, -10));
+    ctx.globalAlpha = 1;
+
+    if (terrarium.moisture > 80) {
+      ctx.globalAlpha = Math.min(0.18, (terrarium.moisture - 80) / 60);
+      px(ctx, jx + 4, jy + 8, 4, jh - 24, COLORS.waterPale);
+      px(ctx, jx + jw - 10, jy + 14, 3, jh - 36, COLORS.waterLight);
+      ctx.globalAlpha = 1;
+    }
+
+    ctx.globalAlpha = 0.08;
+    px(ctx, jx + 4, jy + 4, jw - 8, jh - 8, COLORS.glassTint);
+    ctx.globalAlpha = 1;
+  }
+
+  drawTable(ctx, terrarium) {
     const { x: jx, y: jy, w: jw, h: jh } = JAR;
     const shelfY = jy + jh;
     const shelfW = jw + Math.round(24 * S);
     const shelfX = jx - Math.round(12 * S);
 
+    drawSoftShadow(ctx, jx + jw / 2, shelfY + Math.round(8 * S), jw * 0.42, Math.round(10 * S), 0.28);
+
     px(ctx, shelfX - Math.round(4 * S), shelfY + Math.round(14 * S), shelfW + Math.round(8 * S), Math.round(6 * S), COLORS.woodShadow);
     px(ctx, shelfX, shelfY + Math.round(10 * S), shelfW, Math.round(5 * S), COLORS.woodLo);
     px(ctx, shelfX - Math.round(2 * S), shelfY + Math.round(2 * S), shelfW + Math.round(4 * S), Math.round(8 * S), COLORS.wood);
     px(ctx, shelfX, shelfY, shelfW, Math.round(6 * S), COLORS.woodHi);
+
+    for (let x = shelfX; x < shelfX + shelfW; x += Math.round(8 * S)) {
+      const grain = Math.sin(x * 0.08) > 0 ? shade(COLORS.woodLo, -8) : shade(COLORS.woodHi, 6);
+      px(ctx, x, shelfY + 1, Math.round(4 * S), Math.round(4 * S), grain);
+    }
 
     for (let i = 0; i < 5; i += 1) {
       const gx = shelfX + Math.round(14 * S) + i * Math.round(52 * S);
@@ -637,6 +733,8 @@ export class PixelRenderer {
     const legW = Math.round(6 * S);
     const legH = Math.round(22 * S);
     const legY = shelfY + Math.round(14 * S);
+    px(ctx, shelfX + Math.round(8 * S) + 1, legY + 1, legW, legH, shade(COLORS.woodShadow, -10));
+    px(ctx, shelfX + shelfW - Math.round(14 * S) + 1, legY + 1, legW, legH, shade(COLORS.woodShadow, -10));
     px(ctx, shelfX + Math.round(8 * S), legY, legW, legH, COLORS.woodLo);
     px(ctx, shelfX + shelfW - Math.round(14 * S), legY, legW, legH, COLORS.woodLo);
     px(ctx, shelfX + Math.round(9 * S), legY, legW - 2, 2, COLORS.woodHi);
@@ -733,13 +831,26 @@ export class PixelRenderer {
 
   drawDayNightOverlay(ctx, terrarium) {
     if (terrarium.isDay) {
-      ctx.globalAlpha = 0.035;
+      ctx.globalAlpha = 0.04;
       ctx.fillStyle = COLORS.sunCore;
+      ctx.fillRect(0, 0, GAME_W, GAME_H);
+      ctx.globalAlpha = 0.025;
+      const grd = ctx.createLinearGradient(0, 0, GAME_W, GAME_H);
+      grd.addColorStop(0, COLORS.whiteHot);
+      grd.addColorStop(1, 'transparent');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, GAME_W, GAME_H);
     } else {
-      ctx.globalAlpha = 0.14;
+      ctx.globalAlpha = 0.12;
       ctx.fillStyle = COLORS.skyNightTop;
+      ctx.fillRect(0, 0, GAME_W, GAME_H);
+      ctx.globalAlpha = 0.06;
+      const grd = ctx.createLinearGradient(0, 0, 0, GAME_H);
+      grd.addColorStop(0, COLORS.moonHi);
+      grd.addColorStop(1, 'transparent');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, GAME_W, GAME_H * 0.4);
     }
-    ctx.fillRect(0, 0, GAME_W, GAME_H);
     ctx.globalAlpha = 1;
   }
 

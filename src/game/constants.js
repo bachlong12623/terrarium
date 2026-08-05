@@ -61,6 +61,12 @@ export const COLORS = {
   hudBorder: '#c8ddd4',
   outline: '#5a7060',
   sparkle: '#b8dff0',
+  shadow: 'rgba(60, 70, 55, 0.25)',
+  shadowDeep: 'rgba(45, 55, 40, 0.4)',
+  glassEdge: '#a8c8b8',
+  glassReflect: 'rgba(255, 255, 255, 0.55)',
+  leafShadow: '#4a7058',
+  whiteHot: '#fffef5',
 };
 
 export const GAME_W = 1152;
