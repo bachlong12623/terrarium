@@ -163,8 +163,8 @@ export class Plant {
   spawnSparkles(count = 8) {
     for (let i = 0; i < count; i += 1) {
       this.sparkles.push({
-        x: (Math.random() - 0.5) * 36,
-        y: (Math.random() - 0.5) * 30,
+        x: (Math.random() - 0.5) * 54,
+        y: (Math.random() - 0.5) * 45,
         life: 0.6 + Math.random() * 0.5,
         maxLife: 0.6 + Math.random() * 0.5,
         size: 1 + Math.floor(Math.random() * 3),

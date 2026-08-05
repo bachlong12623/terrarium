@@ -1,11 +1,11 @@
 {
   "name": "Terrarium",
   "short_name": "Terrarium",
-  "description": "Nuôi terrarium pixel — chăm cây, mở nhánh sinh trưởng",
+  "description": "Nuôi terrarium yên bình — chăm cây, mở nhánh sinh trưởng",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#1a2332",
-  "theme_color": "#1a2332",
+  "background_color": "#f5ebe0",
+  "theme_color": "#e8f4f0",
   "orientation": "any",
   "icons": [
     {
