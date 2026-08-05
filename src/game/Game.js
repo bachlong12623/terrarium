@@ -122,15 +122,24 @@ export class Game {
   }
 
   doWater() {
-    this.applyAction('water', this.terrarium.water(), 'Đã tưới nước');
+    const before = Math.round(this.terrarium.moisture);
+    const flags = this.terrarium.water();
+    const after = Math.round(this.terrarium.moisture);
+    this.applyAction('water', flags, `Ẩm ${before}% → ${after}%`);
   }
 
   doMist() {
-    this.applyAction('mist', this.terrarium.mist(), 'Đã phun sương');
+    const before = Math.round(this.terrarium.moisture);
+    const flags = this.terrarium.mist();
+    const after = Math.round(this.terrarium.moisture);
+    this.applyAction('mist', flags, `Ẩm ${before}% → ${after}%`);
   }
 
   doRotate() {
-    this.applyAction('rotate', this.terrarium.rotate(), 'Đã xoay bình');
+    const before = Math.round(this.terrarium.ambientLight);
+    const flags = this.terrarium.rotate();
+    const after = Math.round(this.terrarium.ambientLight);
+    this.applyAction('rotate', flags, `Sáng ${before}% → ${after}%`);
   }
 
   doFertilize() {
@@ -165,6 +174,7 @@ export class Game {
 
   start() {
     this.renderer.resize();
+    this.ui.updateStats(this.terrarium);
     this.running = true;
     this.lastTime = performance.now();
     requestAnimationFrame((t) => this.loop(t));
@@ -192,6 +202,8 @@ export class Game {
       this.autoSaveTimer = 0;
       this.save();
     }
+
+    this.ui.updateStats(this.terrarium);
 
     this.uiTickTimer += dt;
     if (this.uiTickTimer >= 0.4) {

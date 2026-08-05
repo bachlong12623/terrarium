@@ -879,14 +879,16 @@ export class PixelRenderer {
     ctx.fillStyle = COLORS.textDim;
     ctx.fillText(`${terrarium.seeds}`, 114, 20);
 
-    this.drawBar(ctx, 14, 30, Math.round(92 * S), 8, terrarium.moisture / 100, COLORS.water, 'Ẩm');
+    const moisturePct = Math.round(terrarium.moisture);
+    this.drawBar(ctx, 14, 30, Math.round(92 * S), 8, terrarium.moisture / 100, COLORS.water, `Ẩm ${moisturePct}%`);
 
     px(ctx, GAME_W - Math.round(98 * S), 13, 9, 9, COLORS.leafMid);
     px(ctx, GAME_W - Math.round(97 * S), 14, 7, 7, COLORS.leafBright);
     ctx.fillStyle = COLORS.text;
     ctx.fillText(`${terrarium.plants.length}/4`, GAME_W - Math.round(90 * S), 20);
 
-    this.drawBar(ctx, GAME_W - Math.round(98 * S), 30, Math.round(92 * S), 8, terrarium.ambientLight / 100, COLORS.sunCore, 'Sáng');
+    const lightPct = Math.round(terrarium.ambientLight);
+    this.drawBar(ctx, GAME_W - Math.round(98 * S), 30, Math.round(92 * S), 8, terrarium.ambientLight / 100, COLORS.sunCore, `Sáng ${lightPct}%`);
   }
 
   drawHudPanel(ctx, x, y, w, h) {

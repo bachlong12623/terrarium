@@ -2,9 +2,9 @@ import { BRANCH_LABELS, STAGE_NAMES, MAX_PLANTS } from '../game/constants.js';
 import { getBranchScores, getPlantDef, PLANTS } from '../data/plants.js';
 
 const TOOLS = [
-  { action: 'water', label: 'Tưới', icon: '~' },
-  { action: 'mist', label: 'Sương', icon: 'o' },
-  { action: 'rotate', label: 'Xoay', icon: '↻' },
+  { action: 'water', label: 'Tưới', icon: '~', hint: 'Tăng ẩm' },
+  { action: 'mist', label: 'Sương', icon: 'o', hint: 'Tăng ẩm nhẹ' },
+  { action: 'rotate', label: 'Xoay', icon: '↻', hint: 'Tăng sáng' },
   { action: 'fertilize', label: 'Bón', icon: '+' },
   { action: 'prune', label: 'Tỉa', icon: '−' },
   { action: 'plant', label: 'Trồng', icon: '●' },
@@ -18,6 +18,8 @@ export class GameUI {
     this.game = game;
     this.panel = null;
     this.detailPlant = null;
+    this.lastMoisture = null;
+    this.lastLight = null;
     this.render();
     this.bind();
   }
@@ -27,8 +29,8 @@ export class GameUI {
       <button
         class="tool-btn${t.quiet ? ' tool-btn--quiet' : ''}"
         data-action="${t.action}"
-        title="${t.label}"
-        aria-label="${t.label}"
+        title="${t.hint ? `${t.label} — ${t.hint}` : t.label}"
+        aria-label="${t.hint ? `${t.label}, ${t.hint}` : t.label}"
       >
         <span class="tool-icon">${t.icon}</span>
         <span>${t.label}</span>
@@ -36,12 +38,67 @@ export class GameUI {
     `).join('');
 
     this.root.innerHTML = `
+      <div class="env-stats" aria-label="Môi trường bình">
+        <div class="env-stat">
+          <div class="env-stat-head">
+            <span class="env-stat-label">Ẩm</span>
+            <span class="env-stat-value" data-stat="moisture">55%</span>
+          </div>
+          <div class="env-stat-track">
+            <div class="env-stat-fill env-stat-fill--moisture" data-fill="moisture"></div>
+          </div>
+        </div>
+        <div class="env-stat">
+          <div class="env-stat-head">
+            <span class="env-stat-label">Sáng</span>
+            <span class="env-stat-value" data-stat="light">60%</span>
+          </div>
+          <div class="env-stat-track">
+            <div class="env-stat-fill env-stat-fill--light" data-fill="light"></div>
+          </div>
+        </div>
+      </div>
       <nav class="toolbar" role="toolbar" aria-label="Chăm sóc cây">${buttons}</nav>
       <div id="panel" class="panel hidden" aria-live="polite"></div>
       <div id="toast-ui" class="toast-ui hidden"></div>
     `;
     this.panel = this.root.querySelector('#panel');
     this.toastEl = this.root.querySelector('#toast-ui');
+    this.moistureValueEl = this.root.querySelector('[data-stat="moisture"]');
+    this.lightValueEl = this.root.querySelector('[data-stat="light"]');
+    this.moistureFillEl = this.root.querySelector('[data-fill="moisture"]');
+    this.lightFillEl = this.root.querySelector('[data-fill="light"]');
+  }
+
+  updateStats(terrarium) {
+    const moisture = Math.round(terrarium.moisture);
+    const light = Math.round(terrarium.ambientLight);
+
+    this.moistureValueEl.textContent = `${moisture}%`;
+    this.lightValueEl.textContent = `${light}%`;
+    this.moistureFillEl.style.width = `${moisture}%`;
+    this.lightFillEl.style.width = `${light}%`;
+
+    if (this.lastMoisture !== null && moisture !== this.lastMoisture) {
+      this.moistureValueEl.classList.add('env-stat-value--pulse');
+      this.moistureFillEl.classList.add('env-stat-fill--pulse');
+      setTimeout(() => {
+        this.moistureValueEl.classList.remove('env-stat-value--pulse');
+        this.moistureFillEl.classList.remove('env-stat-fill--pulse');
+      }, 500);
+    }
+
+    if (this.lastLight !== null && light !== this.lastLight) {
+      this.lightValueEl.classList.add('env-stat-value--pulse');
+      this.lightFillEl.classList.add('env-stat-fill--pulse');
+      setTimeout(() => {
+        this.lightValueEl.classList.remove('env-stat-value--pulse');
+        this.lightFillEl.classList.remove('env-stat-fill--pulse');
+      }, 500);
+    }
+
+    this.lastMoisture = moisture;
+    this.lastLight = light;
   }
 
   bind() {
