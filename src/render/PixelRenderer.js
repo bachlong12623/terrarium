@@ -418,6 +418,8 @@ export class PixelRenderer {
     ctx.clearRect(0, 0, GAME_W, GAME_H);
 
     this.drawSky(ctx, terrarium);
+    this.drawHills(ctx, terrarium);
+    this.drawTable(ctx);
     this.drawJar(ctx, terrarium);
     this.drawParticlesBehind(ctx, terrarium, tSec);
 
@@ -440,8 +442,8 @@ export class PixelRenderer {
 
   drawSky(ctx, terrarium) {
     const bands = terrarium.isDay
-      ? [COLORS.skyTop, COLORS.skyMid, COLORS.bgMid, COLORS.bgDark]
-      : [COLORS.skyNightTop, COLORS.skyNightMid, COLORS.bgMid, COLORS.bgDark];
+      ? [COLORS.skyTop, COLORS.skyMid, COLORS.skyHorizon, COLORS.skyGlow]
+      : [COLORS.skyNightTop, COLORS.skyNightMid, COLORS.skyNightHorizon, COLORS.skyNightHorizon];
     const bandH = Math.ceil(GAME_H / bands.length);
     bands.forEach((color, i) => {
       px(ctx, 0, i * bandH, GAME_W, bandH + 1, color);
@@ -462,6 +464,27 @@ export class PixelRenderer {
     }
   }
 
+  drawHills(ctx, terrarium) {
+    const hillBase = JAR.y + JAR.h + Math.round(18 * S);
+    const farH = Math.round(28 * S);
+    const nearH = Math.round(36 * S);
+
+    for (let x = 0; x < GAME_W; x += 2) {
+      const wave1 = Math.sin((x / GAME_W) * Math.PI * 2.4) * Math.round(8 * S);
+      const wave2 = Math.sin((x / GAME_W) * Math.PI * 3.8 + 1.2) * Math.round(5 * S);
+      const farY = hillBase - farH + wave1;
+      px(ctx, x, farY, 2, farH + Math.round(40 * S), COLORS.hillFar);
+      const nearY = hillBase - nearH + wave2;
+      px(ctx, x, nearY, 2, nearH + Math.round(50 * S), COLORS.hillNear);
+    }
+
+    if (terrarium.isDay) {
+      ctx.globalAlpha = 0.12;
+      px(ctx, 0, hillBase - Math.round(6 * S), GAME_W, Math.round(8 * S), COLORS.skyGlow);
+      ctx.globalAlpha = 1;
+    }
+  }
+
   drawClouds(ctx, terrarium) {
     const drift = terrarium.totalPlayTime * 4;
     const clouds = [
@@ -469,17 +492,23 @@ export class PixelRenderer {
       { x: 210, y: 18, w: 54 },
       { x: 390, y: 33, w: 36 },
       { x: 480, y: 21, w: 45 },
+      { x: 620, y: 24, w: 48 },
+      { x: 820, y: 15, w: 40 },
+      { x: 980, y: 30, w: 52 },
     ];
     for (const c of clouds) {
       const cx = ((c.x + drift * 0.3) % (GAME_W + 60)) - 30;
-      px(ctx, cx, c.y + 4, c.w, 3, COLORS.cloud);
-      px(ctx, cx + 4, c.y, c.w - 8, 5, COLORS.cloudHi);
-      px(ctx, cx + 8, c.y - 2, c.w - 16, 3, COLORS.cloudHi);
-      px(ctx, cx + 2, c.y + 7, c.w - 4, 2, COLORS.cloud);
+      px(ctx, cx, c.y + 4, c.w, 3, COLORS.cloudShadow);
+      px(ctx, cx + 4, c.y, c.w - 8, 5, COLORS.cloud);
+      px(ctx, cx + 8, c.y - 2, c.w - 16, 3, COLORS.cloud);
+      px(ctx, cx + 2, c.y + 7, c.w - 4, 2, COLORS.cloudShadow);
     }
   }
 
   drawSun(ctx, sx, sy) {
+    ctx.globalAlpha = 0.18;
+    px(ctx, sx - 14, sy - 14, 28, 28, COLORS.sunCore);
+    ctx.globalAlpha = 1;
     for (let i = 0; i < 8; i += 1) {
       const angle = (i / 8) * Math.PI * 2;
       const rx = sx + Math.cos(angle) * 10 * S;
@@ -493,20 +522,28 @@ export class PixelRenderer {
   }
 
   drawMoon(ctx, mx, my) {
+    ctx.globalAlpha = 0.15;
+    px(ctx, mx - 10, my - 10, 20, 20, COLORS.moonHi);
+    ctx.globalAlpha = 1;
     px(ctx, mx - 6, my - 6, 12, 12, COLORS.moon);
     px(ctx, mx - 5, my - 5, 10, 10, COLORS.moonHi);
     px(ctx, mx - 2, my - 3, 4, 6, COLORS.moonCrater);
     px(ctx, mx + 2, my + 2, 3, 3, COLORS.moonCrater);
+    px(ctx, mx - 4, my + 1, 2, 2, COLORS.moonCrater);
   }
 
   drawStars(ctx, terrarium) {
-    for (let i = 0; i < 32; i += 1) {
+    for (let i = 0; i < 40; i += 1) {
       const starX = (i * 53 + 17) % GAME_W;
-      const starY = (i * 31 + 5) % Math.round(55 * S);
-      const tw = 0.3 + Math.abs(Math.sin(terrarium.totalPlayTime * 2 + i * 0.7)) * 0.7;
+      const starY = (i * 31 + 5) % Math.round(70 * S);
+      const tw = 0.25 + Math.abs(Math.sin(terrarium.totalPlayTime * 1.8 + i * 0.7)) * 0.55;
       ctx.globalAlpha = tw;
-      const sz = i % 5 === 0 ? 2 : 1;
+      const sz = i % 7 === 0 ? 2 : 1;
       px(ctx, starX, starY, sz, sz, COLORS.star);
+      if (i % 11 === 0) {
+        ctx.globalAlpha = tw * 0.35;
+        px(ctx, starX - 1, starY - 1, sz + 2, sz + 2, COLORS.moonHi);
+      }
       ctx.globalAlpha = 1;
     }
   }
@@ -514,21 +551,13 @@ export class PixelRenderer {
   drawJar(ctx, terrarium) {
     const { x: jx, y: jy, w: jw, h: jh } = JAR;
 
-    px(ctx, jx - Math.round(12 * S), jy + jh + 2, jw + Math.round(24 * S), Math.round(8 * S), COLORS.woodDark);
-    px(ctx, jx - Math.round(10 * S), jy + jh, jw + Math.round(20 * S), Math.round(6 * S), COLORS.wood);
-    px(ctx, jx - Math.round(8 * S), jy + jh + Math.round(6 * S), jw + Math.round(16 * S), Math.round(4 * S), COLORS.woodLo);
-    px(ctx, jx - Math.round(6 * S), jy + jh + Math.round(10 * S), jw + Math.round(12 * S), Math.round(3 * S), COLORS.woodDark);
-    for (let i = 0; i < 4; i += 1) {
-      px(ctx, jx + Math.round(16 * S) + i * Math.round(56 * S), jy + jh + 1, Math.round(2 * S), Math.round(5 * S), COLORS.woodHi);
-    }
-
     px(ctx, jx + Math.round(18 * S), jy - Math.round(10 * S), jw - Math.round(36 * S), Math.round(8 * S), COLORS.wood);
     px(ctx, jx + Math.round(22 * S), jy - Math.round(12 * S), jw - Math.round(44 * S), Math.round(4 * S), COLORS.woodHi);
     px(ctx, jx + Math.round(20 * S), jy - Math.round(4 * S), jw - Math.round(40 * S), Math.round(3 * S), COLORS.woodLo);
-    px(ctx, jx + jw / 2 - Math.round(6 * S), jy - Math.round(14 * S), Math.round(12 * S), Math.round(4 * S), COLORS.woodDark);
+    px(ctx, jx + jw / 2 - Math.round(6 * S), jy - Math.round(14 * S), Math.round(12 * S), Math.round(4 * S), COLORS.woodShadow);
 
-    ctx.globalAlpha = 0.08;
-    ctx.fillStyle = COLORS.glass;
+    ctx.globalAlpha = 0.06;
+    ctx.fillStyle = COLORS.glassTint;
     ctx.fillRect(jx + 2, jy + 2, jw - 4, jh - 4);
     ctx.globalAlpha = 1;
 
@@ -545,6 +574,7 @@ export class PixelRenderer {
       }
     }
     px(ctx, jx + 4, soilTop, jw - 8, 2, COLORS.soilLight);
+    px(ctx, jx + 6, soilTop - 1, jw - 12, 1, COLORS.moss);
 
     const pebbles = [
       [24, -4, 10, 6], [26, -6, 6, 3], [jw - 44, -3, 12, 5],
@@ -558,24 +588,19 @@ export class PixelRenderer {
     ctx.strokeStyle = COLORS.glassLo;
     ctx.lineWidth = 2;
     ctx.strokeRect(jx, jy, jw, jh);
-    ctx.strokeStyle = COLORS.glassDeep;
+    ctx.strokeStyle = COLORS.glass;
     ctx.lineWidth = 1;
     ctx.strokeRect(jx + 1, jy + 1, jw - 2, jh - 2);
 
-    px(ctx, jx, jy, 3, 3, COLORS.bgDark);
-    px(ctx, jx + jw - 3, jy, 3, 3, COLORS.bgDark);
-    px(ctx, jx, jy + jh - 3, 3, 3, COLORS.bgDark);
-    px(ctx, jx + jw - 3, jy + jh - 3, 3, 3, COLORS.bgDark);
-
     px(ctx, jx + 8, jy + 5, jw - 70, 2, COLORS.glassHi);
     px(ctx, jx + jw - 22, jy + 12, 2, jh - 36, COLORS.glassHi);
-    ctx.globalAlpha = 0.45;
+    ctx.globalAlpha = 0.35;
     px(ctx, jx + 5, jy + 12, 2, jh - 48, COLORS.glassHi);
     px(ctx, jx + 14, jy + jh - 40, jw - 28, 1, COLORS.glass);
     ctx.globalAlpha = 1;
 
     if (terrarium.moisture > 65) {
-      ctx.globalAlpha = Math.min(0.4, (terrarium.moisture - 65) / 70);
+      ctx.globalAlpha = Math.min(0.35, (terrarium.moisture - 65) / 70);
       for (let i = 0; i < 8; i += 1) {
         const row = i % 4;
         const fogY = jy + Math.round(24 * S) + row * Math.round(18 * S);
@@ -586,24 +611,53 @@ export class PixelRenderer {
     }
 
     if (terrarium.moisture > 80) {
-      ctx.globalAlpha = Math.min(0.25, (terrarium.moisture - 80) / 60);
+      ctx.globalAlpha = Math.min(0.2, (terrarium.moisture - 80) / 60);
       px(ctx, jx + 4, jy + 8, 3, jh - 20, COLORS.waterPale);
       px(ctx, jx + jw - 8, jy + 14, 2, jh - 30, COLORS.waterLight);
       ctx.globalAlpha = 1;
     }
   }
 
+  drawTable(ctx) {
+    const { x: jx, y: jy, w: jw, h: jh } = JAR;
+    const shelfY = jy + jh;
+    const shelfW = jw + Math.round(24 * S);
+    const shelfX = jx - Math.round(12 * S);
+
+    px(ctx, shelfX - Math.round(4 * S), shelfY + Math.round(14 * S), shelfW + Math.round(8 * S), Math.round(6 * S), COLORS.woodShadow);
+    px(ctx, shelfX, shelfY + Math.round(10 * S), shelfW, Math.round(5 * S), COLORS.woodLo);
+    px(ctx, shelfX - Math.round(2 * S), shelfY + Math.round(2 * S), shelfW + Math.round(4 * S), Math.round(8 * S), COLORS.wood);
+    px(ctx, shelfX, shelfY, shelfW, Math.round(6 * S), COLORS.woodHi);
+
+    for (let i = 0; i < 5; i += 1) {
+      const gx = shelfX + Math.round(14 * S) + i * Math.round(52 * S);
+      px(ctx, gx, shelfY + 1, Math.round(2 * S), Math.round(5 * S), COLORS.woodLo);
+    }
+
+    const legW = Math.round(6 * S);
+    const legH = Math.round(22 * S);
+    const legY = shelfY + Math.round(14 * S);
+    px(ctx, shelfX + Math.round(8 * S), legY, legW, legH, COLORS.woodLo);
+    px(ctx, shelfX + shelfW - Math.round(14 * S), legY, legW, legH, COLORS.woodLo);
+    px(ctx, shelfX + Math.round(9 * S), legY, legW - 2, 2, COLORS.woodHi);
+    px(ctx, shelfX + shelfW - Math.round(13 * S), legY, legW - 2, 2, COLORS.woodHi);
+
+    px(ctx, shelfX - Math.round(6 * S), shelfY + Math.round(16 * S), shelfW + Math.round(12 * S), Math.round(3 * S), COLORS.woodShadow);
+  }
+
   drawParticlesBehind(ctx, terrarium, tSec) {
-    for (const p of terrarium.particles) {
-      if (p.kind !== 'firefly') continue;
-      const x = p.x * GAME_W;
-      const y = p.y * GAME_H;
-      const flicker = 0.35 + Math.abs(Math.sin(tSec * 3 + x)) * 0.65;
-      ctx.globalAlpha = Math.min(1, p.life) * flicker;
-      px(ctx, x, y, 2, 2, COLORS.firefly);
-      ctx.globalAlpha = 0.2 * flicker;
-      px(ctx, x - 2, y - 2, 6, 6, COLORS.firefly);
-      ctx.globalAlpha = 1;
+    if (!terrarium.isDay) {
+      for (const p of terrarium.particles) {
+        if (p.kind !== 'firefly') continue;
+        const x = p.x * GAME_W;
+        const y = p.y * GAME_H;
+        const flicker = 0.3 + Math.abs(Math.sin(tSec * 3 + x)) * 0.55;
+        ctx.globalAlpha = Math.min(1, p.life) * flicker;
+        px(ctx, x, y, 2, 2, COLORS.firefly);
+        ctx.globalAlpha = 0.15 * flicker;
+        px(ctx, x - 2, y - 2, 6, 6, COLORS.firefly);
+        ctx.globalAlpha = 1;
+      }
     }
   }
 
@@ -628,6 +682,22 @@ export class PixelRenderer {
       }
       ctx.globalAlpha = 1;
     }
+
+    if (terrarium.isDay) {
+      for (let i = 0; i < 18; i += 1) {
+        const px_ = ((i * 97 + Math.floor(tSec * 12 + i * 3)) % (GAME_W - 40)) + 20;
+        const py = ((i * 53 + Math.floor(tSec * 8 + i * 7)) % Math.round(JAR.y + JAR.h - 20)) + 20;
+        const drift = Math.sin(tSec * 0.8 + i) * 3;
+        const alpha = 0.15 + Math.abs(Math.sin(tSec * 1.2 + i * 0.9)) * 0.25;
+        ctx.globalAlpha = alpha;
+        px(ctx, px_ + drift, py, 2, 2, COLORS.pollen);
+        if (i % 4 === 0) {
+          ctx.globalAlpha = alpha * 0.5;
+          px(ctx, px_ + drift - 1, py - 1, 4, 4, COLORS.flower);
+        }
+        ctx.globalAlpha = 1;
+      }
+    }
   }
 
   drawBranchPreview(ctx, plant) {
@@ -635,48 +705,41 @@ export class PixelRenderer {
     const sorted = [...scores].sort((a, b) => b.score - a.score);
     const max = sorted[0]?.score || 1;
 
-    px(ctx, 72, 231, 432, 78, COLORS.hudBg);
-    ctx.strokeStyle = COLORS.hudBorder;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(72.5, 231.5, 431, 77);
-    px(ctx, 75, 234, 426, 3, COLORS.glassLo);
+    const panelX = Math.round(24 * S);
+    const panelY = Math.round(77 * S);
+    const panelW = Math.round(144 * S);
+    const panelH = Math.round(26 * S);
+
+    this.drawHudPanel(ctx, panelX, panelY, panelW, panelH);
 
     const positions = [0.28, 0.5, 0.72];
     scores.forEach((s, i) => {
       const alpha = 0.2 + (s.score / max) * 0.65;
-      drawBranchSilhouette(ctx, positions[i] * GAME_W, 288, plant.speciesId, s.id, alpha);
+      drawBranchSilhouette(ctx, positions[i] * GAME_W, JAR.y + JAR.h - SOIL_H - Math.round(8 * S), plant.speciesId, s.id, alpha);
     });
 
     ctx.fillStyle = COLORS.textDim;
     ctx.font = `${Math.round(10 * S)}px "Pixelify Sans", monospace`;
     ctx.textAlign = 'center';
-    ctx.fillText('Đang định hình...', GAME_W / 2, 249);
+    ctx.fillText('Đang định hình...', GAME_W / 2, panelY + Math.round(10 * S));
 
     const labels = scores.map((s) => BRANCH_LABELS[s.id] ?? s.id);
     ctx.font = `${Math.round(9 * S)}px "Pixelify Sans", monospace`;
     labels.forEach((label, i) => {
-      ctx.fillStyle = scores[i].score === max ? COLORS.sparkle : COLORS.textDim;
-      ctx.fillText(label, positions[i] * GAME_W, 303);
+      ctx.fillStyle = scores[i].score === max ? COLORS.accent : COLORS.textDim;
+      ctx.fillText(label, positions[i] * GAME_W, panelY + panelH + Math.round(8 * S));
     });
   }
 
   drawDayNightOverlay(ctx, terrarium) {
     if (terrarium.isDay) {
-      ctx.globalAlpha = 0.04;
+      ctx.globalAlpha = 0.035;
       ctx.fillStyle = COLORS.sunCore;
     } else {
-      ctx.globalAlpha = 0.22;
+      ctx.globalAlpha = 0.14;
       ctx.fillStyle = COLORS.skyNightTop;
     }
     ctx.fillRect(0, 0, GAME_W, GAME_H);
-    ctx.globalAlpha = 1;
-
-    ctx.globalAlpha = 0.35;
-    const vig = Math.round(12 * S);
-    px(ctx, 0, 0, GAME_W, vig, COLORS.bgDark);
-    px(ctx, 0, GAME_H - vig, GAME_W, vig, COLORS.bgDark);
-    px(ctx, 0, 0, vig, GAME_H, COLORS.bgDark);
-    px(ctx, GAME_W - vig, 0, vig, GAME_H, COLORS.bgDark);
     ctx.globalAlpha = 1;
   }
 
@@ -718,24 +781,24 @@ export class PixelRenderer {
   }
 
   drawHudPanel(ctx, x, y, w, h) {
-    ctx.globalAlpha = 0.88;
-    px(ctx, x, y, w, h, COLORS.hudBg);
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = COLORS.hudBg;
+    ctx.fillRect(x, y, w, h);
     ctx.strokeStyle = COLORS.hudBorder;
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-    px(ctx, x + 1, y + 1, w - 2, 1, COLORS.glassLo);
+    px(ctx, x + 1, y + 1, w - 2, 1, 'rgba(255, 255, 255, 0.45)');
   }
 
   drawBar(ctx, x, y, w, h, pct, color, label) {
-    px(ctx, x, y, w, h, COLORS.bgDark);
-    ctx.strokeStyle = COLORS.outline;
+    ctx.fillStyle = 'rgba(200, 221, 212, 0.35)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = COLORS.hudBorder;
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
     const fillW = Math.max(0, Math.floor((w - 4) * Math.min(1, pct)));
     if (fillW > 0) {
       px(ctx, x + 2, y + 2, fillW, h - 4, color);
-      px(ctx, x + 2, y + 2, fillW, 1, COLORS.glassHi);
+      px(ctx, x + 2, y + 2, fillW, 1, 'rgba(255, 255, 255, 0.4)');
     }
     if (label) {
       ctx.fillStyle = COLORS.textDim;
