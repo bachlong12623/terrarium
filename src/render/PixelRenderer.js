@@ -90,100 +90,114 @@ function drawAwaken(ctx, x, y) {
   px(ctx, x + 2, y - 1, 1, 1, COLORS.soilPebb);
 }
 
-/* ---------- succulent sprites ---------- */
+/* ---------- succulent sprites (echeveria-style) ---------- */
+
+/** Thick wedge leaf — the iconic sen đá shape */
+function drawEcheveriaLeaf(ctx, cx, cy, angle, length, maxW, color, tipColor) {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const hi = shade(color, 28);
+  const lo = shade(color, -34);
+  const tip = tipColor ?? shade(color, 12);
+
+  for (let step = 0; step < length; step += 1) {
+    const t = step / length;
+    const w = Math.max(2, maxW * (1 - t * 0.9));
+    const bx = cx + cos * step * 1.1;
+    const by = cy + sin * step * 0.48 - 2 * S;
+    const body = step < length * 0.18 ? lo : (t > 0.82 ? tip : color);
+    px(ctx, bx - w / 2, by - 2, w, 5, body);
+    px(ctx, bx - w / 2 + 1, by - 3, Math.max(1, w - 2), 2, hi);
+    if (t > 0.75 && tipColor) {
+      px(ctx, bx - 1, by - 4, 2, 2, tipColor);
+    } else if (step >= length - 2) {
+      px(ctx, bx - 1, by - 4, 2, 2, hi);
+    }
+  }
+}
+
+function drawEcheveriaRosette(ctx, cx, cy, leafCount, leafLen, leafW, baseColor, opts = {}) {
+  const { tipColor, offsetAngle = 0, scale = 1 } = opts;
+  const len = Math.round(leafLen * scale);
+  const w = Math.round(leafW * scale);
+  const order = [];
+  for (let i = 0; i < leafCount; i += 1) {
+    const angle = (i / leafCount) * Math.PI * 2 + offsetAngle - Math.PI / 2;
+    order.push({ angle, i });
+  }
+  order.sort((a, b) => Math.sin(a.angle) - Math.sin(b.angle));
+  for (const { angle, i } of order) {
+    const c = shade(baseColor, (i % 4) * 3 - 6);
+    drawEcheveriaLeaf(ctx, cx, cy, angle, len, w, c, tipColor);
+  }
+  px(ctx, cx - Math.round(2 * scale * S), cy - Math.round(4 * scale * S), Math.round(4 * scale * S), Math.round(3 * scale * S), shade(baseColor, -18));
+}
 
 function drawSprout(ctx, x, y, variant) {
-  const c = [COLORS.leafPale, COLORS.leafYoung, COLORS.leafBright][variant % 3];
-  px(ctx, x - 2, y - 14, 4, 14, COLORS.leafMid);
-  drawFatLeaf(ctx, x - 2, y - 10, -1, -1, 5, 6, c, COLORS.leafPale);
-  drawFatLeaf(ctx, x + 2, y - 10, 1, -1, 5, 6, c, COLORS.leafPale);
-  px(ctx, x - 1, y - 15, 2, 2, COLORS.leafBright);
+  const c = [COLORS.leafYoung, COLORS.leafBright, COLORS.leafMid][variant % 3];
+  drawEcheveriaLeaf(ctx, x, y, -Math.PI * 0.72, Math.round(4 * S), Math.round(3.5 * S), c, COLORS.leafPale);
+  drawEcheveriaLeaf(ctx, x, y, -Math.PI * 0.28, Math.round(4 * S), Math.round(3.5 * S), c, COLORS.leafPale);
+  px(ctx, x - 1, y - 1, 2, 2, shade(COLORS.leaf, -10));
 }
 
 function drawSeedling(ctx, x, y, variant) {
-  const c = [COLORS.leafYoung, COLORS.leafBright, COLORS.leafPale][variant % 3];
-  px(ctx, x - 2, y - 18, 4, 18, COLORS.leaf);
-  for (let i = 0; i < 4; i += 1) {
-    const angle = (i / 4) * Math.PI * 2 + 0.4;
-    drawRosetteLeaf(ctx, x, y, angle, 10 * S, 7, c, COLORS.leafPale);
-  }
-  px(ctx, x - 3, y - 4, 6, 4, COLORS.leafMid);
+  const c = [COLORS.leafMid, COLORS.leafBright, COLORS.leafYoung][variant % 3];
+  drawEcheveriaRosette(ctx, x, y, 4, Math.round(5 * S), Math.round(4 * S), c, { tipColor: COLORS.leafPale, offsetAngle: variant * 0.4 });
 }
 
 function drawGrowing(ctx, x, y, variant) {
-  const c = [COLORS.leafBright, COLORS.leafMid, COLORS.leafYoung][variant % 3];
-  px(ctx, x - 3, y - 6, 6, 6, COLORS.leaf);
-  for (let i = 0; i < 8; i += 1) {
-    const angle = (i / 8) * Math.PI * 2 + variant * 0.25;
-    drawRosetteLeaf(ctx, x, y, angle, 14 * S, 8, c, COLORS.leafPale);
-  }
+  const c = [COLORS.leafMid, COLORS.leafBright, COLORS.leafYoung][variant % 3];
+  drawEcheveriaRosette(ctx, x, y, 7, Math.round(6 * S), Math.round(4.5 * S), c, { tipColor: shade(c, 16), offsetAngle: variant * 0.3 });
 }
 
 function drawPreBranch(ctx, x, y, variant) {
-  drawGrowing(ctx, x, y, variant);
-  px(ctx, x - 3, y - 22, 6, 8, COLORS.leafPale);
-  px(ctx, x - 2, y - 24, 4, 4, COLORS.leafYoung);
-  px(ctx, x - 1, y - 26, 2, 3, COLORS.sparkle);
-  px(ctx, x - 4, y - 23, 2, 2, COLORS.sparkle);
-  px(ctx, x + 2, y - 23, 2, 2, COLORS.sparkle);
+  const c = [COLORS.leafMid, COLORS.leafBright, COLORS.leafYoung][variant % 3];
+  drawEcheveriaRosette(ctx, x, y, 9, Math.round(7 * S), Math.round(5 * S), c, { tipColor: COLORS.leafPale, offsetAngle: variant * 0.25 });
+  px(ctx, x - 2, y - Math.round(10 * S), 4, 4, COLORS.leafPale);
+  px(ctx, x - 1, y - Math.round(12 * S), 2, 3, COLORS.sparkle);
 }
 
 function drawRosette(ctx, x, y, stage, variant) {
-  const layers = stage >= 8 ? 12 : 9;
-  const radius = stage >= 8 ? 22 * S : 17 * S;
-  const colors = [shade(COLORS.leafMid, -12), COLORS.leafMid, COLORS.leafBright, COLORS.leafYoung];
-  for (let i = layers - 1; i >= 0; i -= 1) {
-    const angle = (i / layers) * Math.PI * 2 + variant * 0.35;
-    const layerRadius = radius * (0.55 + (i / layers) * 0.45);
-    drawVolumeLeaf(ctx, x, y, angle, layerRadius, 9, colors[i % colors.length]);
-  }
-  px(ctx, x - 4, y - 8, 8, 6, shade(COLORS.leaf, -10));
-  px(ctx, x - 2, y - 10, 4, 3, COLORS.leafMid);
+  const count = stage >= 8 ? 15 : 12;
+  const len = stage >= 8 ? Math.round(9 * S) : Math.round(7.5 * S);
+  const w = stage >= 8 ? Math.round(5.5 * S) : Math.round(4.5 * S);
+  const tip = variant === 1 ? COLORS.bloom : shade(COLORS.leafPale, 8);
+  drawEcheveriaRosette(ctx, x, y, count, len, w, COLORS.leafMid, { tipColor: tip, offsetAngle: variant * 0.35 });
   if (variant === 1) {
-    px(ctx, x - 8, y - 14, 3, 3, COLORS.bloom);
-    px(ctx, x + 5, y - 13, 3, 3, COLORS.bloom);
+    for (let i = 0; i < 5; i += 1) {
+      const a = (i / 5) * Math.PI * 2 + variant;
+      const lx = x + Math.cos(a) * Math.round(8 * S);
+      const ly = y + Math.sin(a) * Math.round(4 * S) - Math.round(6 * S);
+      px(ctx, lx, ly, 2, 2, COLORS.bloom);
+    }
   }
   if (stage >= 8) {
-    px(ctx, x - 2, y - 28, 4, 12, COLORS.leafMid);
-    px(ctx, x - 5, y - 34, 10, 6, COLORS.flower);
-    px(ctx, x - 2, y - 35, 4, 3, COLORS.whiteHot);
-    px(ctx, x - 6, y - 32, 2, 2, COLORS.sunCore);
-    px(ctx, x + 4, y - 32, 2, 2, COLORS.sunCore);
+    px(ctx, x - 2, y - Math.round(14 * S), 4, Math.round(10 * S), COLORS.leafMid);
+    px(ctx, x - 5, y - Math.round(20 * S), 10, 5, COLORS.flower);
+    px(ctx, x - 2, y - Math.round(21 * S), 4, 3, COLORS.whiteHot);
   }
 }
 
 function drawDesert(ctx, x, y, stage) {
-  const blues = [COLORS.succulentBlueLo, COLORS.succulentBlue, COLORS.succulentBlueHi, COLORS.glassLo];
-  const pads = stage >= 8
-    ? [[0, 0, 10], [-10, 4, 8], [10, 3, 8], [-4, -8, 7], [8, -6, 6]]
-    : [[0, 0, 8], [-8, 3, 6], [8, 2, 6]];
-  for (let i = 0; i < pads.length; i += 1) {
-    const [ox, oy, size] = pads[i];
-    const c = blues[i % blues.length];
-    px(ctx, x + ox - size / 2, y + oy - size / 2 + 1, size, size - 1, shade(c, -18));
-    px(ctx, x + ox - size / 2, y + oy - size / 2, size, size - 2, c);
-    px(ctx, x + ox - size / 2 + 1, y + oy - size / 2, size - 2, 2, shade(c, 16));
-    px(ctx, x + ox - 1, y + oy - size / 2 - 1, 2, 1, COLORS.whiteHot);
-    px(ctx, x + ox + size / 2 - 2, y + oy + size / 2 - 2, 1, 1, shade(c, -22));
-  }
-  if (stage >= 8) {
-    px(ctx, x - 3, y - 14, 6, 4, COLORS.succulentBlueHi);
-    px(ctx, x - 9, y - 10, 3, 3, COLORS.succulentBlueHi);
-    px(ctx, x + 6, y - 9, 3, 3, COLORS.succulentBlueHi);
-  }
+  const blues = [COLORS.succulentBlueLo, COLORS.succulentBlue, COLORS.succulentBlueHi];
+  const stacks = stage >= 8
+    ? [[0, 0, 1], [-8, 5, 0.72], [9, 4, 0.68], [-5, -9, 0.6], [7, -7, 0.55]]
+    : [[0, 0, 1], [-7, 4, 0.75], [8, 3, 0.7]];
+  stacks.forEach(([ox, oy, sc], i) => {
+    drawEcheveriaRosette(ctx, x + ox, y + oy, sc >= 0.9 ? 11 : 8,
+      Math.round(6 * S), Math.round(4 * S), blues[i % blues.length],
+      { tipColor: shade(blues[i % blues.length], 20), scale: sc, offsetAngle: i * 0.5 });
+  });
 }
 
 function drawGarden(ctx, x, y, stage) {
   drawRosette(ctx, x, y, 7, 0);
-  const offsets = stage >= 8
-    ? [[-18, 4], [16, 5], [-12, 10], [14, 9], [0, 12], [-6, 8], [8, 7]]
-    : [[-14, 3], [13, 4], [-8, 7], [10, 6]];
-  for (const [ox, oy] of offsets) {
-    for (let i = 0; i < 5; i += 1) {
-      const angle = (i / 5) * Math.PI * 2;
-      drawRosetteLeaf(ctx, x + ox, y + oy, angle, 7 * S, 5, COLORS.leafYoung, COLORS.leafPale);
-    }
-    px(ctx, x + ox - 2, y + oy - 3, 4, 3, COLORS.leafMid);
+  const pups = stage >= 8
+    ? [[-20, 5, 0.45], [18, 6, 0.42], [-14, 11, 0.38], [15, 10, 0.38], [-6, 12, 0.35], [8, 11, 0.35]]
+    : [[-16, 4, 0.4], [15, 5, 0.38], [-10, 8, 0.35], [12, 7, 0.35]];
+  for (const [ox, oy, sc] of pups) {
+    drawEcheveriaRosette(ctx, x + ox, y + oy, 7, Math.round(5 * S), Math.round(3.5 * S),
+      COLORS.leafYoung, { tipColor: COLORS.leafPale, scale: sc, offsetAngle: ox * 0.05 });
   }
 }
 
@@ -324,7 +338,10 @@ function drawSpeciesStage(ctx, plant, x, y) {
   }
 
   if (stage <= 1) drawSeed(ctx, x, y);
-  else if (stage === 2) drawAwaken(ctx, x, y);
+  else if (stage === 2) {
+    px(ctx, x - 3, y - 1, 6, 3, COLORS.soilLight);
+    drawEcheveriaLeaf(ctx, x, y, -Math.PI / 2, Math.round(3 * S), Math.round(2.5 * S), COLORS.leafPale, COLORS.leafYoung);
+  }
   else if (stage === 3) drawSprout(ctx, x, y, v);
   else if (stage === 4) drawSeedling(ctx, x, y, v);
   else if (stage === 5) drawGrowing(ctx, x, y, v);
