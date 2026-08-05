@@ -48,13 +48,19 @@ export const COLORS = {
   sparkle: '#90e0ef',
   flower: '#f4d35e',
   seed: '#6b5344',
+  seedHi: '#8a6a52',
+  succulentBlue: '#6b8a9a',
+  succulentBlueHi: '#8aa8b8',
+  succulentBlueLo: '#4a6d7a',
+  fernStem: '#1b4332',
+  bloom: '#e07a9a',
   danger: '#e07a5f',
   hudBg: '#1e2d3d',
   hudBorder: '#4a7a8a',
 };
 
-export const GAME_W = 384;
-export const GAME_H = 216;
+export const GAME_W = 576;
+export const GAME_H = 324;
 
 export const STAGE_NAMES = {
   1: 'Ngủ',
