@@ -13,7 +13,7 @@ function px(ctx, x, y, w, h, color) {
 
 function drawSeed(ctx, x, y) {
   px(ctx, x - 2, y - 2, 4, 4, COLORS.soilDark);
-  px(ctx, x - 1, y - 1, 2, 2, '#6b5344');
+  px(ctx, x - 1, y - 1, 2, 2, COLORS.seed);
 }
 
 function drawAwaken(ctx, x, y) {
@@ -276,35 +276,39 @@ export function drawPlant(ctx, plant, tSec, selected) {
   }
 
   if (plant.withered && Math.sin(tSec * 4) > 0) {
-    ctx.font = '8px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = COLORS.water;
-    ctx.fillText('💧', x, y - 30);
+    const wy = y - 28 + Math.round(Math.sin(tSec * 5) * 1);
+    px(ctx, x - 1, wy - 4, 2, 3, COLORS.water);
+    px(ctx, x - 2, wy - 2, 4, 1, COLORS.waterLight);
+    px(ctx, x, wy - 5, 1, 1, COLORS.waterPale);
   }
 
   if (plant.isHarvestable) {
     const bob = Math.round(Math.sin(tSec * 3) * 2);
-    ctx.font = '8px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = COLORS.flower;
-    ctx.fillText('✦', x, y - 32 + bob);
+    const hy = y - 30 + bob;
+    px(ctx, x - 2, hy - 2, 4, 4, COLORS.flower);
+    px(ctx, x - 1, hy - 3, 2, 1, COLORS.sunCore);
+    px(ctx, x - 3, hy, 1, 1, COLORS.flower);
+    px(ctx, x + 2, hy, 1, 1, COLORS.flower);
+    px(ctx, x, hy + 2, 1, 1, COLORS.flower);
   }
 
   if (selected) {
+    const pulse = 0.5 + Math.sin(tSec * 4) * 0.2;
+    ctx.globalAlpha = pulse;
     ctx.strokeStyle = COLORS.sparkle;
-    ctx.globalAlpha = 0.7;
-    const bx = x - 14;
-    const by = y - 28;
-    const bw = 28;
-    const bh = 32;
-    ctx.strokeRect(bx, by, 4, 1);
-    ctx.strokeRect(bx, by, 1, 4);
-    ctx.strokeRect(bx + bw - 4, by, 4, 1);
-    ctx.strokeRect(bx + bw - 1, by, 1, 4);
-    ctx.strokeRect(bx, by + bh - 1, 4, 1);
-    ctx.strokeRect(bx, by + bh - 4, 1, 4);
-    ctx.strokeRect(bx + bw - 4, by + bh - 1, 4, 1);
-    ctx.strokeRect(bx + bw - 1, by + bh - 4, 1, 4);
+    ctx.lineWidth = 1;
+    const bx = x - 15;
+    const by = y - 30;
+    const bw = 30;
+    const bh = 34;
+    for (const [ox, oy, ow, oh] of [
+      [bx, by, 5, 2], [bx, by, 2, 5],
+      [bx + bw - 5, by, 5, 2], [bx + bw - 2, by, 2, 5],
+      [bx, by + bh - 2, 5, 2], [bx, by + bh - 5, 2, 5],
+      [bx + bw - 5, by + bh - 2, 5, 2], [bx + bw - 2, by + bh - 5, 2, 5],
+    ]) {
+      ctx.strokeRect(ox, oy, ow, oh);
+    }
     ctx.globalAlpha = 1;
   }
 
@@ -370,98 +374,156 @@ export class PixelRenderer {
   }
 
   drawSky(ctx, terrarium) {
-    const grd = ctx.createLinearGradient(0, 0, 0, GAME_H);
-    if (terrarium.isDay) {
-      grd.addColorStop(0, '#2d4a63');
-      grd.addColorStop(0.5, COLORS.bgMid);
-      grd.addColorStop(1, COLORS.bgDark);
-    } else {
-      grd.addColorStop(0, '#141b2a');
-      grd.addColorStop(1, COLORS.bgDark);
-    }
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, GAME_W, GAME_H);
+    const bands = terrarium.isDay
+      ? [COLORS.skyTop, COLORS.skyMid, COLORS.bgMid, COLORS.bgDark]
+      : [COLORS.skyNightTop, COLORS.skyNightMid, COLORS.bgMid, COLORS.bgDark];
+    const bandH = Math.ceil(GAME_H / bands.length);
+    bands.forEach((color, i) => {
+      px(ctx, 0, i * bandH, GAME_W, bandH + 1, color);
+    });
 
     if (terrarium.isDay) {
+      this.drawClouds(ctx, terrarium);
       const frac = terrarium.time / 0.5;
-      const sx = 24 + frac * (GAME_W - 48);
-      const sy = 26 - Math.sin(frac * Math.PI) * 12;
-      px(ctx, sx - 3, sy - 3, 6, 6, COLORS.accent);
-      px(ctx, sx - 2, sy - 2, 4, 4, '#f8c58a');
-      px(ctx, sx - 1, sy - 5, 2, 1, COLORS.accent);
-      px(ctx, sx - 1, sy + 4, 2, 1, COLORS.accent);
-      px(ctx, sx - 5, sy - 1, 1, 2, COLORS.accent);
-      px(ctx, sx + 4, sy - 1, 1, 2, COLORS.accent);
+      const sx = 28 + frac * (GAME_W - 56);
+      const sy = 22 - Math.sin(frac * Math.PI) * 14;
+      this.drawSun(ctx, sx, sy);
     } else {
+      this.drawStars(ctx, terrarium);
       const frac = (terrarium.time - 0.5) / 0.5;
-      const mx = 24 + frac * (GAME_W - 48);
-      const my = 24 - Math.sin(frac * Math.PI) * 10;
-      px(ctx, mx - 3, my - 3, 6, 6, COLORS.moon);
-      px(ctx, mx - 1, my - 2, 3, 3, '#9bb5d6');
-      px(ctx, mx - 2, my - 1, 1, 1, '#5c7a9c');
+      const mx = 32 + frac * (GAME_W - 64);
+      const my = 20 - Math.sin(frac * Math.PI) * 12;
+      this.drawMoon(ctx, mx, my);
+    }
+  }
 
-      for (let i = 0; i < 24; i += 1) {
-        const starX = (i * 53 + 17) % GAME_W;
-        const starY = (i * 31 + 5) % 60;
-        const tw = Math.sin(terrarium.totalPlayTime * 2 + i) > 0.3 ? 1 : 0.4;
-        ctx.globalAlpha = tw;
-        px(ctx, starX, starY, 1, 1, COLORS.sun);
-        ctx.globalAlpha = 1;
-      }
+  drawClouds(ctx, terrarium) {
+    const drift = terrarium.totalPlayTime * 4;
+    const clouds = [
+      { x: 40, y: 18, w: 28 },
+      { x: 140, y: 12, w: 36 },
+      { x: 260, y: 22, w: 24 },
+      { x: 320, y: 14, w: 30 },
+    ];
+    for (const c of clouds) {
+      const cx = ((c.x + drift * 0.3) % (GAME_W + 60)) - 30;
+      px(ctx, cx, c.y + 4, c.w, 3, COLORS.cloud);
+      px(ctx, cx + 4, c.y, c.w - 8, 5, COLORS.cloudHi);
+      px(ctx, cx + 8, c.y - 2, c.w - 16, 3, COLORS.cloudHi);
+      px(ctx, cx + 2, c.y + 7, c.w - 4, 2, COLORS.cloud);
+    }
+  }
+
+  drawSun(ctx, sx, sy) {
+    for (let i = 0; i < 8; i += 1) {
+      const angle = (i / 8) * Math.PI * 2;
+      const rx = sx + Math.cos(angle) * 7;
+      const ry = sy + Math.sin(angle) * 7;
+      px(ctx, rx - 1, ry - 1, 2, 2, COLORS.sunRay);
+    }
+    px(ctx, sx - 4, sy - 4, 8, 8, COLORS.sunRay);
+    px(ctx, sx - 3, sy - 3, 6, 6, COLORS.sunCore);
+    px(ctx, sx - 2, sy - 2, 4, 4, COLORS.sun);
+    px(ctx, sx - 1, sy - 1, 2, 2, '#fff3b0');
+  }
+
+  drawMoon(ctx, mx, my) {
+    px(ctx, mx - 4, my - 4, 8, 8, COLORS.moon);
+    px(ctx, mx - 3, my - 3, 6, 6, COLORS.moonHi);
+    px(ctx, mx - 1, my - 2, 3, 4, COLORS.moonCrater);
+    px(ctx, mx + 1, my + 1, 2, 2, COLORS.moonCrater);
+  }
+
+  drawStars(ctx, terrarium) {
+    for (let i = 0; i < 32; i += 1) {
+      const starX = (i * 53 + 17) % GAME_W;
+      const starY = (i * 31 + 5) % 55;
+      const tw = 0.3 + Math.abs(Math.sin(terrarium.totalPlayTime * 2 + i * 0.7)) * 0.7;
+      ctx.globalAlpha = tw;
+      const sz = i % 5 === 0 ? 2 : 1;
+      px(ctx, starX, starY, sz, sz, COLORS.star);
+      ctx.globalAlpha = 1;
     }
   }
 
   drawJar(ctx, terrarium) {
     const { x: jx, y: jy, w: jw, h: jh } = JAR;
 
-    px(ctx, jx - 8, jy + jh, jw + 16, 6, '#3a4a5a');
-    px(ctx, jx - 6, jy + jh + 6, jw + 12, 3, '#2d3a48');
+    px(ctx, jx - 12, jy + jh + 2, jw + 24, 8, COLORS.woodDark);
+    px(ctx, jx - 10, jy + jh, jw + 20, 6, COLORS.wood);
+    px(ctx, jx - 8, jy + jh + 6, jw + 16, 4, COLORS.woodLo);
+    px(ctx, jx - 6, jy + jh + 10, jw + 12, 3, COLORS.woodDark);
+    for (let i = 0; i < 4; i += 1) {
+      px(ctx, jx + 16 + i * 56, jy + jh + 1, 2, 5, COLORS.woodHi);
+    }
 
-    px(ctx, jx + 20, jy - 8, jw - 40, 6, '#6b5344');
-    px(ctx, jx + 24, jy - 10, jw - 48, 3, '#7d6350');
-    px(ctx, jx + 20, jy - 3, jw - 40, 2, '#54412f');
+    px(ctx, jx + 18, jy - 10, jw - 36, 8, COLORS.wood);
+    px(ctx, jx + 22, jy - 12, jw - 44, 4, COLORS.woodHi);
+    px(ctx, jx + 20, jy - 4, jw - 40, 3, COLORS.woodLo);
+    px(ctx, jx + jw / 2 - 6, jy - 14, 12, 4, COLORS.woodDark);
 
-    ctx.globalAlpha = 0.12;
+    ctx.globalAlpha = 0.08;
     ctx.fillStyle = COLORS.glass;
-    ctx.fillRect(jx + 3, jy + 3, jw - 6, jh - 6);
+    ctx.fillRect(jx + 2, jy + 2, jw - 4, jh - 4);
     ctx.globalAlpha = 1;
 
     const soilTop = jy + jh - SOIL_H;
     for (let row = 0; row < SOIL_H; row += 2) {
       for (let col = 4; col < jw - 4; col += 4) {
-        const c = (col + row) % 12 === 0
-          ? COLORS.soilLight
-          : row > SOIL_H - 8 ? COLORS.soilDark : COLORS.soil;
+        const noise = (col * 7 + row * 13) % 17;
+        const c = noise < 3
+          ? COLORS.soilPebb
+          : row > SOIL_H - 8
+            ? COLORS.soilDark
+            : noise < 8 ? COLORS.soilLight : COLORS.soil;
         px(ctx, jx + col, soilTop + row, 4, 2, c);
       }
     }
-    for (let col = 8; col < jw - 8; col += 24) {
-      px(ctx, jx + col, soilTop - 1, 3, 2, '#7a95a5');
-    }
+    px(ctx, jx + 4, soilTop, jw - 8, 2, COLORS.soilLight);
 
-    px(ctx, jx + 24, soilTop - 5, 10, 6, '#5c7a8a');
-    px(ctx, jx + 26, soilTop - 7, 6, 3, '#6b8a9a');
-    px(ctx, jx + jw - 44, soilTop - 4, 12, 5, '#4a6d7a');
-    px(ctx, jx + jw - 40, soilTop - 6, 5, 3, '#5c7a8a');
+    const pebbles = [
+      [24, -4, 10, 6], [26, -6, 6, 3], [jw - 44, -3, 12, 5],
+      [jw - 40, -5, 5, 3], [jw / 2 - 8, -3, 8, 4],
+    ];
+    for (const [ox, oy, pw, ph] of pebbles) {
+      px(ctx, jx + ox, soilTop + oy, pw, ph, COLORS.soilPebb);
+      px(ctx, jx + ox + 1, soilTop + oy, pw - 2, 1, COLORS.soilLight);
+    }
 
     ctx.strokeStyle = COLORS.glassLo;
     ctx.lineWidth = 2;
     ctx.strokeRect(jx, jy, jw, jh);
+    ctx.strokeStyle = COLORS.glassDeep;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(jx + 1, jy + 1, jw - 2, jh - 2);
+
     px(ctx, jx, jy, 3, 3, COLORS.bgDark);
     px(ctx, jx + jw - 3, jy, 3, 3, COLORS.bgDark);
+    px(ctx, jx, jy + jh - 3, 3, 3, COLORS.bgDark);
+    px(ctx, jx + jw - 3, jy + jh - 3, 3, 3, COLORS.bgDark);
 
-    px(ctx, jx + 10, jy + 6, jw - 60, 2, COLORS.glassHi);
-    px(ctx, jx + jw - 26, jy + 14, 2, jh - 40, COLORS.glassHi);
-    ctx.globalAlpha = 0.5;
-    px(ctx, jx + 6, jy + 14, 2, jh - 50, COLORS.glassHi);
+    px(ctx, jx + 8, jy + 5, jw - 70, 2, COLORS.glassHi);
+    px(ctx, jx + jw - 22, jy + 12, 2, jh - 36, COLORS.glassHi);
+    ctx.globalAlpha = 0.45;
+    px(ctx, jx + 5, jy + 12, 2, jh - 48, COLORS.glassHi);
+    px(ctx, jx + 14, jy + jh - 40, jw - 28, 1, COLORS.glass);
     ctx.globalAlpha = 1;
 
-    if (terrarium.moisture > 70) {
-      ctx.globalAlpha = Math.min(0.35, (terrarium.moisture - 70) / 80);
-      for (let i = 0; i < 6; i += 1) {
-        px(ctx, jx + 14 + i * 38, jy + 30 + (i % 3) * 16, 22, 1, COLORS.waterLight);
-        px(ctx, jx + 20 + i * 36, jy + 38 + (i % 2) * 20, 12, 1, COLORS.waterPale);
+    if (terrarium.moisture > 65) {
+      ctx.globalAlpha = Math.min(0.4, (terrarium.moisture - 65) / 70);
+      for (let i = 0; i < 8; i += 1) {
+        const row = i % 4;
+        const fogY = jy + 24 + row * 18;
+        px(ctx, jx + 10 + (i % 3) * 72, fogY, 28, 1, COLORS.waterLight);
+        px(ctx, jx + 16 + (i % 3) * 68, fogY + 6, 18, 1, COLORS.waterPale);
       }
+      ctx.globalAlpha = 1;
+    }
+
+    if (terrarium.moisture > 80) {
+      ctx.globalAlpha = Math.min(0.25, (terrarium.moisture - 80) / 60);
+      px(ctx, jx + 4, jy + 8, 3, jh - 20, COLORS.waterPale);
+      px(ctx, jx + jw - 8, jy + 14, 2, jh - 30, COLORS.waterLight);
       ctx.globalAlpha = 1;
     }
   }
@@ -471,16 +533,16 @@ export class PixelRenderer {
       if (p.kind !== 'firefly') continue;
       const x = p.x * GAME_W;
       const y = p.y * GAME_H;
-      const flicker = 0.4 + Math.abs(Math.sin(tSec * 3 + x)) * 0.6;
+      const flicker = 0.35 + Math.abs(Math.sin(tSec * 3 + x)) * 0.65;
       ctx.globalAlpha = Math.min(1, p.life) * flicker;
-      px(ctx, x, y, 2, 2, '#c9f27e');
-      ctx.globalAlpha = 0.25 * flicker;
-      px(ctx, x - 1, y - 1, 4, 4, '#c9f27e');
+      px(ctx, x, y, 2, 2, COLORS.firefly);
+      ctx.globalAlpha = 0.2 * flicker;
+      px(ctx, x - 2, y - 2, 6, 6, COLORS.firefly);
       ctx.globalAlpha = 1;
     }
   }
 
-  drawParticlesFront(ctx, terrarium) {
+  drawParticlesFront(ctx, terrarium, tSec) {
     for (const p of terrarium.particles) {
       if (p.kind === 'firefly') continue;
       const x = p.x * GAME_W;
@@ -488,11 +550,16 @@ export class PixelRenderer {
       const a = Math.min(1, p.life * 2);
       ctx.globalAlpha = a;
       if (p.kind === 'drop') {
-        px(ctx, x, y, 2, 3, COLORS.water);
+        px(ctx, x, y, 2, 4, COLORS.water);
+        px(ctx, x, y, 1, 2, COLORS.waterLight);
+        px(ctx, x + 1, y + 2, 1, 1, COLORS.waterPale);
       } else if (p.kind === 'seedfly') {
-        px(ctx, x, y, 2, 2, COLORS.flower);
+        px(ctx, x, y, 3, 3, COLORS.flower);
+        px(ctx, x + 1, y, 1, 2, COLORS.sunCore);
+        px(ctx, x, y + 1, 2, 1, COLORS.leafYoung);
       } else {
-        px(ctx, x, y, 3, 3, COLORS.waterPale);
+        px(ctx, x, y, 4, 4, COLORS.waterPale);
+        px(ctx, x + 1, y + 1, 2, 2, COLORS.waterLight);
       }
       ctx.globalAlpha = 1;
     }
@@ -503,70 +570,114 @@ export class PixelRenderer {
     const sorted = [...scores].sort((a, b) => b.score - a.score);
     const max = sorted[0]?.score || 1;
 
-    ctx.globalAlpha = 0.4;
-    ctx.fillStyle = COLORS.bgDark;
-    ctx.fillRect(50, 158, 284, 48);
-    ctx.globalAlpha = 1;
+    px(ctx, 48, 154, 288, 52, COLORS.hudBg);
+    ctx.strokeStyle = COLORS.hudBorder;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(48.5, 154.5, 287, 51);
+    px(ctx, 50, 156, 284, 2, COLORS.glassLo);
 
     const positions = [0.28, 0.5, 0.72];
     scores.forEach((s, i) => {
-      const alpha = 0.25 + (s.score / max) * 0.55;
+      const alpha = 0.2 + (s.score / max) * 0.65;
       drawBranchSilhouette(ctx, positions[i] * GAME_W, 196, plant.speciesId, s.id, alpha);
     });
 
     ctx.fillStyle = COLORS.textDim;
     ctx.font = '8px "Pixelify Sans", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('Đang định hình...', GAME_W / 2, 167);
+    ctx.fillText('Đang định hình...', GAME_W / 2, 166);
+
+    const labels = scores.map((s) => BRANCH_LABELS[s.id] ?? s.id);
+    ctx.font = '7px "Pixelify Sans", monospace';
+    labels.forEach((label, i) => {
+      ctx.fillStyle = scores[i].score === max ? COLORS.sparkle : COLORS.textDim;
+      ctx.fillText(label, positions[i] * GAME_W, 202);
+    });
   }
 
   drawDayNightOverlay(ctx, terrarium) {
     if (terrarium.isDay) {
-      ctx.globalAlpha = 0.05;
-      ctx.fillStyle = COLORS.sunWarm;
+      ctx.globalAlpha = 0.04;
+      ctx.fillStyle = COLORS.sunCore;
     } else {
-      ctx.globalAlpha = 0.25;
-      ctx.fillStyle = COLORS.bgDark;
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = COLORS.skyNightTop;
     }
     ctx.fillRect(0, 0, GAME_W, GAME_H);
+    ctx.globalAlpha = 1;
+
+    ctx.globalAlpha = 0.35;
+    const vig = 12;
+    px(ctx, 0, 0, GAME_W, vig, COLORS.bgDark);
+    px(ctx, 0, GAME_H - vig, GAME_W, vig, COLORS.bgDark);
+    px(ctx, 0, 0, vig, GAME_H, COLORS.bgDark);
+    px(ctx, GAME_W - vig, 0, vig, GAME_H, COLORS.bgDark);
     ctx.globalAlpha = 1;
   }
 
   drawTopHUD(ctx, terrarium) {
     const hours = Math.floor(terrarium.time * 24);
     const mins = Math.floor((terrarium.time * 24 - hours) * 60);
-    const timeIcon = terrarium.isDay ? '☀' : '☾';
 
-    ctx.globalAlpha = 0.82;
-    ctx.fillStyle = COLORS.bgLight;
-    ctx.fillRect(6, 5, 96, 26);
-    ctx.fillRect(GAME_W - 102, 5, 96, 26);
-    ctx.globalAlpha = 1;
+    this.drawHudPanel(ctx, 4, 4, 104, 30);
+    this.drawHudPanel(ctx, GAME_W - 108, 4, 104, 30);
 
-    ctx.strokeStyle = COLORS.glassLo;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(6.5, 5.5, 95, 25);
-    ctx.strokeRect(GAME_W - 101.5, 5.5, 95, 25);
+    const iconX = 10;
+    const iconY = 11;
+    if (terrarium.isDay) {
+      px(ctx, iconX, iconY - 2, 6, 6, COLORS.sunRay);
+      px(ctx, iconX + 1, iconY - 1, 4, 4, COLORS.sun);
+    } else {
+      px(ctx, iconX + 1, iconY - 2, 5, 5, COLORS.moon);
+      px(ctx, iconX + 2, iconY - 1, 3, 3, COLORS.moonHi);
+    }
 
     ctx.fillStyle = COLORS.text;
     ctx.font = '9px "Pixelify Sans", monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`${timeIcon} ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`, 11, 15);
+    ctx.fillText(`${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`, 20, 14);
+
+    px(ctx, 68, 9, 6, 6, COLORS.flower);
+    px(ctx, 69, 10, 4, 4, COLORS.seed);
     ctx.fillStyle = COLORS.textDim;
-    ctx.fillText(`Hạt: ${terrarium.seeds}`, 60, 15);
+    ctx.fillText(`${terrarium.seeds}`, 76, 14);
 
-    this.drawBar(ctx, 11, 21, 86, 5, terrarium.moisture / 100, COLORS.water, 'Ẩm');
+    this.drawBar(ctx, 10, 22, 92, 6, terrarium.moisture / 100, COLORS.water, 'Ẩm');
 
+    px(ctx, GAME_W - 98, 9, 6, 6, COLORS.leafMid);
+    px(ctx, GAME_W - 97, 10, 4, 4, COLORS.leafBright);
     ctx.fillStyle = COLORS.text;
-    ctx.textAlign = 'left';
-    ctx.fillText(`Cây: ${terrarium.plants.length}/4`, GAME_W - 96, 15);
+    ctx.fillText(`${terrarium.plants.length}/4`, GAME_W - 90, 14);
 
-    this.drawBar(ctx, GAME_W - 96, 21, 86, 5, terrarium.ambientLight / 100, COLORS.sunWarm, 'Sáng');
+    this.drawBar(ctx, GAME_W - 98, 22, 92, 6, terrarium.ambientLight / 100, COLORS.sunCore, 'Sáng');
   }
 
-  drawBar(ctx, x, y, w, h, pct, color) {
+  drawHudPanel(ctx, x, y, w, h) {
+    ctx.globalAlpha = 0.88;
+    px(ctx, x, y, w, h, COLORS.hudBg);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = COLORS.hudBorder;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    px(ctx, x + 1, y + 1, w - 2, 1, COLORS.glassLo);
+  }
+
+  drawBar(ctx, x, y, w, h, pct, color, label) {
     px(ctx, x, y, w, h, COLORS.bgDark);
-    px(ctx, x + 1, y + 1, Math.max(0, Math.floor((w - 2) * Math.min(1, pct))), h - 2, color);
+    ctx.strokeStyle = COLORS.outline;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    const fillW = Math.max(0, Math.floor((w - 4) * Math.min(1, pct)));
+    if (fillW > 0) {
+      px(ctx, x + 2, y + 2, fillW, h - 4, color);
+      px(ctx, x + 2, y + 2, fillW, 1, COLORS.glassHi);
+    }
+    if (label) {
+      ctx.fillStyle = COLORS.textDim;
+      ctx.font = '6px "Pixelify Sans", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(label, x + 2, y - 1);
+    }
   }
 }
 
