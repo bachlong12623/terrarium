@@ -19,6 +19,7 @@ export class Terrarium {
     this.plants = [];
     this.particles = [];
     this.rotation = 0;
+    this.lightBoost = 0;
     this.lastAction = null;
     this.actionCooldowns = {};
     this.discoveredBranches = new Set();
@@ -36,7 +37,7 @@ export class Terrarium {
     const dayCurve = this.isDay
       ? 55 + Math.sin(this.time * Math.PI * 2) * 35
       : 15 + Math.sin(this.time * Math.PI * 2) * 8;
-    return Math.min(100, Math.max(5, dayCurve + this.rotation * 0.15));
+    return Math.min(100, Math.max(5, dayCurve + this.rotation * 0.55 + this.lightBoost));
   }
 
   get environment() {
@@ -108,7 +109,7 @@ export class Terrarium {
   water() {
     if (!this.canAction('water', 1.2)) return false;
     this.markAction('water');
-    this.moisture = Math.min(100, this.moisture + 18);
+    this.moisture = Math.min(100, this.moisture + 25);
     this.lastAction = { type: 'water', t: 0.4 };
     this.spawnRipple();
     return { watered: true, waterBoost: 1, cooldown: 1.2 };
@@ -117,7 +118,7 @@ export class Terrarium {
   mist() {
     if (!this.canAction('mist', 2)) return false;
     this.markAction('mist');
-    this.moisture = Math.min(100, this.moisture + 10);
+    this.moisture = Math.min(100, this.moisture + 14);
     this.lastAction = { type: 'mist', t: 0.6 };
     this.spawnMist();
     return { misted: true, mistBoost: 1, cooldown: 2 };
@@ -126,7 +127,8 @@ export class Terrarium {
   rotate() {
     if (!this.canAction('rotate', 0.8)) return false;
     this.markAction('rotate');
-    this.rotation = (this.rotation + 15) % 100;
+    this.rotation = Math.min(100, this.rotation + 35);
+    this.lightBoost = Math.min(45, this.lightBoost + 28);
     this.lastAction = { type: 'rotate', t: 0.3 };
     return { rotated: true, rotateBoost: 1, cooldown: 0.8 };
   }
@@ -178,8 +180,9 @@ export class Terrarium {
     this.totalPlayTime += dt;
     this.time = (this.time + dt / DAY_LENGTH) % 1;
 
-    this.moisture = Math.max(8, this.moisture - dt * 1.1);
-    this.rotation = Math.max(0, this.rotation - dt * 2);
+    this.moisture = Math.max(8, this.moisture - dt * 0.75);
+    this.rotation = Math.max(0, this.rotation - dt * 1.2);
+    this.lightBoost = Math.max(0, this.lightBoost - dt * 6);
 
     if (!this.isDay && Math.random() < dt * 0.6 && this.particles.length < 40) {
       this.particles.push({
@@ -228,6 +231,7 @@ export class Terrarium {
       light: this.light,
       time: this.time,
       rotation: this.rotation,
+      lightBoost: this.lightBoost,
       plants: this.plants.map((p) => p.toJSON()),
       discoveredBranches: [...this.discoveredBranches],
       discoveredStages: [...this.discoveredStages],
@@ -244,6 +248,7 @@ export class Terrarium {
     t.light = data.light ?? 60;
     t.time = data.time ?? 0.25;
     t.rotation = data.rotation ?? 0;
+    t.lightBoost = data.lightBoost ?? 0;
     t.totalPlayTime = data.totalPlayTime ?? 0;
     t.seeds = data.seeds ?? START_SEEDS;
     t.harvestCount = data.harvestCount ?? 0;

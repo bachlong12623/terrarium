@@ -63,8 +63,93 @@ body {
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: env(safe-area-inset-top, 12px) 16px env(safe-area-inset-bottom, 16px);
+}
+
+/* ---- environment stats ---- */
+
+.env-stats {
+  pointer-events: none;
+  display: flex;
+  gap: 12px;
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 10px 14px;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(8px);
+}
+
+.env-stat {
+  flex: 1;
+  min-width: 0;
+}
+
+.env-stat-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.env-stat-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-soft);
+  letter-spacing: 0.02em;
+}
+
+.env-stat-value {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.2s ease;
+}
+
+.env-stat-value--pulse {
+  color: var(--sage-deep);
+}
+
+.env-stat-track {
+  height: 10px;
+  background: var(--cream-deep);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.env-stat-fill {
+  height: 100%;
+  width: 55%;
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.env-stat-fill--moisture {
+  background: linear-gradient(90deg, #7eb8d4 0%, #5a9fc4 100%);
+}
+
+.env-stat-fill--light {
+  background: linear-gradient(90deg, #f0d080 0%, #e8b840 100%);
+}
+
+.env-stat-fill--pulse {
+  filter: brightness(1.12);
+}
+
+@keyframes env-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+.env-stat-value--pulse,
+.env-stat-fill--pulse {
+  animation: env-pulse 0.5s ease;
 }
 
 /* ---- bottom toolbar ---- */
