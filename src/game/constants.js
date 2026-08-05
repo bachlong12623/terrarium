@@ -51,9 +51,11 @@ export const COLORS = {
   flower: '#fde68a',
   seed: '#8b6914',
   seedHi: '#a68932',
-  succulentBlue: '#94a8b8',
-  succulentBlueHi: '#b8c8d4',
-  succulentBlueLo: '#788898',
+  cactusGreen: '#4a8a58',
+  cactusGreenHi: '#6aad72',
+  cactusGreenLo: '#3a6844',
+  cactusSpine: '#f0ead8',
+  cactusFlower: '#e87898',
   fernStem: '#5a8a6a',
   danger: '#d4a090',
   dangerSoft: '#f5e6e0',
@@ -84,12 +86,11 @@ export const STAGE_NAMES = {
 };
 
 export const BRANCH_LABELS = {
-  rosette: 'Đồng minh',
-  desert: 'Sa mạc',
-  garden: 'Vườn',
+  column: 'Cột',
+  saguaro: 'Tay vươn',
+  cluster: 'Bụi',
   canopy: 'Rừng',
   cascade: 'Thác',
-  column: 'Cột',
 };
 
 export const START_SEEDS = 3;

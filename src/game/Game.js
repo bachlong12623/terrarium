@@ -21,7 +21,7 @@ export class Game {
     this.load();
     if (this.terrarium.plants.length === 0 && this.terrarium.seeds > 0) {
       this.terrarium.seeds += 1;
-      this.terrarium.plantSeed('succulent');
+      this.terrarium.plantSeed('cactus');
     }
 
     this.bindInput();
@@ -83,7 +83,7 @@ export class Game {
     SaveManager.clear();
     this.terrarium = new Terrarium();
     this.terrarium.seeds += 1;
-    this.terrarium.plantSeed('succulent');
+    this.terrarium.plantSeed('cactus');
     this.selectedPlant = null;
     this.ui.hidePanel();
     this.ui.showToast('Đã bắt đầu lại');

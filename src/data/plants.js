@@ -1,28 +1,28 @@
-export const SUCCULENT = {
-  id: 'succulent',
-  name: 'Sen đá',
-  icon: '🪴',
-  description: 'Chịu khô, thích sáng. Cách chăm quyết định hình dáng cuối.',
+export const CACTUS = {
+  id: 'cactus',
+  name: 'Xương rồng',
+  icon: '🌵',
+  description: 'Chịu khô, thân mọng. Cách chăm quyết định hình dáng cuối.',
   branches: [
     {
-      id: 'rosette',
-      label: 'Đồng minh',
-      hint: 'Tưới vừa phải, ánh sáng đều',
+      id: 'column',
+      label: 'Cột',
+      hint: 'Tưới vừa, ánh sáng đều — thân thẳng cao',
       score: (care) => {
         const balanced = 100 - Math.abs(care.humid - care.radiant);
         return balanced * 1.2 + Math.min(care.humid, care.radiant) * 0.3;
       },
     },
     {
-      id: 'desert',
-      label: 'Sa mạc',
-      hint: 'Ít tưới, nhiều nắng',
+      id: 'saguaro',
+      label: 'Tay vươn',
+      hint: 'Ít tưới, nhiều nắng — mọc cánh tay',
       score: (care) => care.radiant * 1.4 + (100 - care.humid) * 0.8,
     },
     {
-      id: 'garden',
-      label: 'Vườn',
-      hint: 'Ẩm vừa, không tỉa, bón phân',
+      id: 'cluster',
+      label: 'Bụi',
+      hint: 'Ẩm vừa, bón phân — mọc thành cụm',
       score: (care) => care.humid * 1.1 + care.fertilizeCount * 25 + (care.pruneCount === 0 ? 30 : 0),
     },
   ],
@@ -56,12 +56,29 @@ export const FERN = {
 };
 
 export const PLANTS = {
-  succulent: SUCCULENT,
+  cactus: CACTUS,
   fern: FERN,
 };
 
+const LEGACY_SPECIES = { succulent: 'cactus' };
+const LEGACY_BRANCHES = {
+  succulent: { rosette: 'column', desert: 'saguaro', garden: 'cluster' },
+};
+
+export function normalizeSpeciesId(id) {
+  return LEGACY_SPECIES[id] ?? id ?? 'cactus';
+}
+
+export function normalizeBranch(speciesId, branchId) {
+  if (!branchId) return branchId;
+  const species = normalizeSpeciesId(speciesId);
+  const legacy = LEGACY_BRANCHES[speciesId] ?? LEGACY_BRANCHES.succulent;
+  if (species === 'cactus' && legacy[branchId]) return legacy[branchId];
+  return branchId;
+}
+
 export function getPlantDef(id) {
-  return PLANTS[id] ?? SUCCULENT;
+  return PLANTS[normalizeSpeciesId(id)] ?? CACTUS;
 }
 
 export function resolveBranch(speciesId, care) {

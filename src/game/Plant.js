@@ -1,5 +1,5 @@
 import { BRANCH_WINDOW_STAGES, STAGE_DURATIONS } from './constants.js';
-import { resolveBranch } from '../data/plants.js';
+import { normalizeSpeciesId, normalizeBranch, resolveBranch } from '../data/plants.js';
 
 export class CareTracker {
   constructor() {
@@ -52,8 +52,8 @@ export class CareTracker {
 }
 
 export class Plant {
-  constructor(speciesId = 'succulent', x = 0.5, y = 0.72) {
-    this.speciesId = speciesId;
+  constructor(speciesId = 'cactus', x = 0.5, y = 0.72) {
+    this.speciesId = normalizeSpeciesId(speciesId);
     this.x = x;
     this.y = y;
     this.stage = 1;
@@ -195,10 +195,10 @@ export class Plant {
   }
 
   static fromJSON(data) {
-    const plant = new Plant(data.speciesId, data.x, data.y);
+    const plant = new Plant(normalizeSpeciesId(data.speciesId), data.x, data.y);
     plant.stage = data.stage ?? 1;
     plant.stageProgress = data.stageProgress ?? 0;
-    plant.branch = data.branch ?? null;
+    plant.branch = normalizeBranch(data.speciesId, data.branch ?? null);
     plant.care = CareTracker.fromJSON(data.care);
     plant.variant = data.variant ?? 0;
     plant.plantedAt = data.plantedAt ?? Date.now();

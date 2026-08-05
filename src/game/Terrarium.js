@@ -1,6 +1,14 @@
 import { Plant } from './Plant.js';
 import { START_SEEDS, HARVEST_SEEDS, MAX_PLANTS, PLANT_SLOTS } from './constants.js';
 
+function migrateDexKey(key) {
+  return key
+    .replace(/^succulent-/, 'cactus-')
+    .replace('-rosette', '-column')
+    .replace('-desert', '-saguaro')
+    .replace('-garden', '-cluster');
+}
+
 const DAY_LENGTH = 120;
 
 export class Terrarium {
@@ -48,7 +56,8 @@ export class Terrarium {
     return null;
   }
 
-  plantSeed(speciesId = 'succulent') {
+  plantSeed(speciesId = 'cactus') {
+    speciesId = speciesId === 'succulent' ? 'cactus' : speciesId;
     if (this.plants.length >= MAX_PLANTS) return { ok: false, reason: 'full' };
     if (this.seeds <= 0) return { ok: false, reason: 'noseed' };
 
@@ -239,8 +248,8 @@ export class Terrarium {
     t.seeds = data.seeds ?? START_SEEDS;
     t.harvestCount = data.harvestCount ?? 0;
     t.plants = (data.plants ?? []).map((p) => Plant.fromJSON(p));
-    t.discoveredBranches = new Set(data.discoveredBranches ?? []);
-    t.discoveredStages = new Set(data.discoveredStages ?? []);
+    t.discoveredBranches = new Set((data.discoveredBranches ?? []).map(migrateDexKey));
+    t.discoveredStages = new Set((data.discoveredStages ?? []).map(migrateDexKey));
     return t;
   }
 }
